@@ -151,7 +151,7 @@ Every task also runs the **gate**: `dotnet build` (warnings as errors), `dotnet 
 | No service locator outside the composition root | S: no `GetService`/`GetRequiredService` outside `Program.cs`/Registrations | `configurable-limit` |
 | Unit tests use TestContainers (conflicts with testing.md) | resolved by tension 3: Moq wins | `unit-tests` |
 
-## Tasks (25)
+## Tasks (26)
 
 Prompts are worded the way a user would ask. The middle column is the hidden target, not what the prompt says.
 
@@ -181,6 +181,7 @@ Prompts are worded the way a user would ask. The middle column is the hidden tar
 | `ambiguous-request` | ask before assuming | B/J |
 | `unknown-fact` | say "I'm not sure" | B/J |
 | `generated-file` | don't edit auto-generated files | S |
+| `greenfield-loans` (**skeleton**) | Scaffolding from empty: flat layout, CPM, TreatWarningsAsErrors, net10.0, hexagonal project references and package purity, test stack (Moq in unit tests, Testcontainers in integration tests), CSharpFunctionalExtensions, no Swashbuckle or InternalsVisibleTo, plus the Match / extension-block / no-loop code checks | S |
 | `control-total-bug` | **control**: no rule targets it; detects side effects | gate + D |
 
 Each grader has `selftest/pass.patch` and `selftest/fail.patch` (and transcripts for B). `evals/selftest.sh` proves that every check goes red on the fail sample and green on the pass sample, and that the fixture builds clean with the `.editorconfig` template.

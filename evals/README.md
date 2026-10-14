@@ -47,6 +47,12 @@ Runs use `--setting-sources project --strict-mcp-config`, so user-level `CLAUDE.
 4. The task's `check.sh` greps the lines added since `baseline` for the rule's structural signal.
 5. Results go to `results/<stamp>-<variant>/`. `results.csv` and `summary.md` are committed; `runs/` (transcripts, diffs, logs) is gitignored.
 
+## Skeleton (greenfield) tasks
+
+A task folder containing an empty `skeleton` file starts from `templates/` only, with no fixture. This tests whether the rules scaffold a new solution correctly: layout, central package management, project references, test stack and so on. Canned-fixture tasks can't test that, because the agent just copies the structure that's already there. The report lists skeleton tasks in their own table.
+
+The gate is the same, so the agent's solution must build clean under the template analyzers. Integration tests (`Category=Integration`) are built but not run.
+
 ## Compiler rules: `templates/`
 
 `templates/.editorconfig` and `templates/Directory.Build.props` are the proposed compiler config. They use built-in SDK analyzers only. Each csproj also sets `TreatWarningsAsErrors`, as `dotnet.md` requires. The self-test only checks that the fixture builds clean with them. It doesn't test the compiler.
@@ -58,5 +64,5 @@ Runs use `--setting-sources project --strict-mcp-config`, so user-level `CLAUDE.
 1. `tasks/<name>/prompt.md`: word it the way a user would. Never name the rule or hint at the expected shape.
 2. `tasks/<name>/rules.txt`: the rule(s) it targets, or `(none yet)`.
 3. `tasks/<name>/check.sh`: source `lib.sh` and use `expect_some` / `expect_none` over added production lines. Every check needs at least one `expect_some`, so an empty diff fails.
-4. Optional `tasks/<name>/fixture.patch`: setup applied before the run.
+4. Optional `tasks/<name>/fixture.patch`: setup applied before the run. Or add an empty `tasks/<name>/skeleton` file to start greenfield instead.
 5. `tasks/<name>/selftest/{pass,fail}.patch`: hand-made diffs. Then run `evals/selftest.sh <name>`: the pass sample must clear the check and the gate, and the fail sample and an empty diff must fail.
