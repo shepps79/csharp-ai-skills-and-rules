@@ -136,6 +136,10 @@ dotnet_naming_style.underscore_camel.capitalization = camel_case
 dotnet_naming_style.pascal.capitalization = pascal_case
 dotnet_naming_style.camel.capitalization = camel_case
 
+# EF Core migrations are tool-generated; analyzers skip generated code.
+[**/Migrations/*.cs]
+generated_code = true
+
 # Test projects: no XML docs on test classes, and test names follow
 # Method_Expected_Scenario (testing.md), which takes precedence over the Async suffix.
 [src/*Tests/**.cs]
