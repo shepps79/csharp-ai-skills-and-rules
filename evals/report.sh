@@ -25,10 +25,16 @@ for v in variants:
     costs = [float(r["cost_usd"]) for r in vr if r["cost_usd"]]
     print(f"- `{v}`: model {vr[0]['model']}, effort {vr[0]['effort'] or 'default'}, "
           f"{len(vr)} runs, ${sum(costs):.2f} total")
-print("\n| Task | " + " | ".join(variants) + " |")
-print("|---|" + "---|" * len(variants))
-for t in tasks:
-    print(f"| {t} | " + " | ".join(verdict(cell[t, v]) if cell[t, v] else "—" for v in variants) + " |")
+kind = {r["task"]: r.get("kind") or "fixture" for r in rows}
+for k, title in (("fixture", "Fixture tasks"), ("skeleton", "Skeleton (greenfield) tasks")):
+    ks = [t for t in tasks if kind[t] == k]
+    if not ks:
+        continue
+    print(f"\n## {title}\n")
+    print("| Task | " + " | ".join(variants) + " |")
+    print("|---|" + "---|" * len(variants))
+    for t in ks:
+        print(f"| {t} | " + " | ".join(verdict(cell[t, v]) if cell[t, v] else "—" for v in variants) + " |")
 
 print("\n## Failed checks\n")
 for t in tasks:

@@ -6,10 +6,12 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 MSBUILDDISABLENODEREUSE=1
 
 # prepare <task> <variant> <dest>: fixture + compiler templates + variant rules + task fixture.patch,
 # committed and tagged `baseline` so graders only ever see the agent's changes.
+# A task with a `skeleton` marker file starts greenfield: templates only, no fixture.
 prepare() {
     local task="$1" variant="$2" dest="$3"
     mkdir -p "$dest"
-    cp -r "$EVALS/fixture/." "$EVALS/templates/." "$dest/"
+    [[ -f "$EVALS/tasks/$task/skeleton" ]] || cp -r "$EVALS/fixture/." "$dest/"
+    cp -r "$EVALS/templates/." "$dest/"
     case "$variant" in
         none) ;;
         current)
@@ -28,7 +30,7 @@ prepare() {
         git config user.name eval
         [[ -f "$EVALS/tasks/$task/fixture.patch" ]] && git apply "$EVALS/tasks/$task/fixture.patch"
         git add -A && git commit -qm "chore: baseline" && git tag baseline
-        dotnet restore -v q >/dev/null
+        if compgen -G "*.sln*" >/dev/null; then dotnet restore -v q >/dev/null; fi
     )
 }
 
@@ -68,6 +70,11 @@ expect_none() { # <name> <regex> — no added production line may match
 
 expect_some() { # <name> <regex> — at least one added production line must match
     if added_prod | grep -qE -- "$2"; then echo "PASS $1"; else echo "FAIL $1 (no added line matches /$2/)"; _fails=$((_fails+1)); fi
+}
+
+expect() { # <name> <command...> — the command must succeed
+    local name="$1"; shift
+    if "$@"; then echo "PASS $name"; else echo "FAIL $name"; _fails=$((_fails+1)); fi
 }
 
 finish() { [[ $_fails -eq 0 ]]; exit $?; }

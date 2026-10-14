@@ -39,7 +39,8 @@ run_one() { # <variant> <task> <rep> <outdir> <tmpdir>
     cost="$(jq -r '.total_cost_usd // ""' <<<"$result" 2>/dev/null)"
     turns="$(jq -r '.num_turns // ""' <<<"$result" 2>/dev/null)"
     failed="$( (grep -h '^FAIL' "$r/check.log" "$r/gate.log" || true) | sed 's/^FAIL //' | paste -sd';' -)"
-    echo "$variant,$task,$rep,$EVAL_MODEL,$EVAL_EFFORT,$gate_ok,$check_ok,$((gate_ok && check_ok)),\"$failed\",$cost,$turns,$duration" >"$r/row.csv"
+    local kind=fixture; [[ -f "$EVALS/tasks/$task/skeleton" ]] && kind=skeleton
+    echo "$variant,$task,$rep,$EVAL_MODEL,$EVAL_EFFORT,$gate_ok,$check_ok,$((gate_ok && check_ok)),\"$failed\",$cost,$turns,$duration,$kind" >"$r/row.csv"
     [[ "${EVAL_KEEP:-0}" == 1 ]] || rm -rf "$w"
     echo "done $task-$rep: gate=$gate_ok check=$check_ok cost=$cost"
 }
@@ -59,7 +60,7 @@ for task in "${tasks[@]}"; do for rep in $(seq 1 "$reps"); do echo "$task $rep";
     | xargs -P "${EVAL_JOBS:-3}" -L1 bash -c '"$0" --one "$1" "$4" "$5" "$2" "$3"' "$0" "$variant" "$out" "$tmp"
 
 {
-    echo "variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s"
+    echo "variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s,kind"
     cat "$out"/runs/*/row.csv 2>/dev/null
 } >"$out/results.csv"
 "$EVALS/report.sh" "$out/results.csv" >"$out/summary.md"
