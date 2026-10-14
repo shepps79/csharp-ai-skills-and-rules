@@ -23,7 +23,7 @@ for task in "${tasks[@]}"; do
         w="$tmp/$task-$sample"
         prepare "$task" none "$w" || { report bad "$sample: prepare"; continue; }
         if [[ "$sample" != empty ]]; then
-            git -C "$w" apply "$EVALS/tasks/$task/selftest/$sample.patch" || { report bad "$sample: patch does not apply"; continue; }
+            git -C "$w" apply --whitespace=nowarn "$EVALS/tasks/$task/selftest/$sample.patch" || { report bad "$sample: patch does not apply"; continue; }
         fi
         "$check" "$w" >"$w.log" 2>&1; status=$?
         case "$sample" in
