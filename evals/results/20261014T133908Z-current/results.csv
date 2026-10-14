@@ -1,0 +1,10 @@
+variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s
+current,field-keyword,1,sonnet,,1,1,1,"",0.1130577,5,50
+current,field-keyword,2,sonnet,,1,1,1,"",0.13020959999999998,8,62
+current,field-keyword,3,sonnet,,1,1,1,"",0.11187559999999999,5,55
+current,match-result,1,sonnet,,1,1,1,"",0.18998000000000004,13,72
+current,match-result,2,sonnet,,1,1,1,"",0.2688491,21,153
+current,match-result,3,sonnet,,1,1,1,"",0.18599169999999998,12,63
+current,order-helpers,1,sonnet,,1,1,1,"",0.1623126,13,42
+current,order-helpers,2,sonnet,,1,1,1,"",0.13742110000000002,11,36
+current,order-helpers,3,sonnet,,1,1,1,"",0.179791,10,35

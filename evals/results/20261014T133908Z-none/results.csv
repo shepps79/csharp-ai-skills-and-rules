@@ -1,0 +1,10 @@
+variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s
+none,field-keyword,1,sonnet,,1,1,1,"",0.05071629999999999,6,34
+none,field-keyword,2,sonnet,,1,1,1,"",0.0445426,5,35
+none,field-keyword,3,sonnet,,1,1,1,"",0.0437774,5,26
+none,match-result,1,sonnet,,1,0,0,"resolves the Result with Match (no added line matches /\bMatch\s*\(/);no IsSuccess/IsFailure/HasValue checks",0.0947375,8,35
+none,match-result,2,sonnet,,1,0,0,"resolves the Result with Match (no added line matches /\bMatch\s*\(/);no IsSuccess/IsFailure/HasValue checks",0.0871106,7,38
+none,match-result,3,sonnet,,1,0,0,"resolves the Result with Match (no added line matches /\bMatch\s*\(/);no IsSuccess/IsFailure/HasValue checks",0.0726133,6,26
+none,order-helpers,1,sonnet,,1,0,0,"uses an extension block (no added line matches /\bextension\s*(<[^>]*>)?\s*\(/);no this-parameter extension methods",0.0663307,8,23
+none,order-helpers,2,sonnet,,1,0,0,"uses an extension block (no added line matches /\bextension\s*(<[^>]*>)?\s*\(/);no this-parameter extension methods",0.1031343,12,48
+none,order-helpers,3,sonnet,,1,0,0,"uses an extension block (no added line matches /\bextension\s*(<[^>]*>)?\s*\(/);no this-parameter extension methods",0.08895259999999999,12,48
