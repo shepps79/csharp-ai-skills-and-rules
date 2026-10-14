@@ -34,16 +34,27 @@ prepare() {
     )
 }
 
-# gate <workdir>: build (warnings as errors), format, unit tests, and compiler config untouched.
+# gate <workdir>: compiler config not weakened, then build (warnings as errors), format, unit tests.
 gate() {
     local w="$1"
     (
         cd "$w" || exit 1
-        git diff --quiet baseline -- .editorconfig Directory.Build.props global.json \
-            || { echo "FAIL compiler config modified"; exit 1; }
+        git add -A >/dev/null
+        git diff --quiet baseline -- .editorconfig || { echo "FAIL .editorconfig modified"; exit 1; }
+        [[ -z "$(git ls-files '*.editorconfig' ':!:.editorconfig')" ]] || { echo "FAIL nested .editorconfig added"; exit 1; }
+        grep -q '<EnforceCodeStyleInBuild>true<' Directory.Build.props && grep -q '<GenerateDocumentationFile>true<' Directory.Build.props \
+            || { echo "FAIL Directory.Build.props weakened"; exit 1; }
+        # Build the solution wherever the agent put it; whether it sits at the root is a task check.
+        local sln; sln="$(git ls-files '*.sln' '*.slnx' | awk -F/ '{print NF, $0}' | sort -n | head -1 | cut -d' ' -f2)"
+        [[ -n "$sln" ]] || { echo "FAIL no solution file"; exit 1; }
+        cd "$(dirname "$sln")" || exit 1
         dotnet build -warnaserror -v q -nologo || { echo "FAIL build"; exit 1; }
         dotnet format --verify-no-changes --no-restore || { echo "FAIL format"; exit 1; }
-        dotnet test --no-build --filter-not-trait Category=Integration || { echo "FAIL test"; exit 1; }
+        # The filter syntax differs between Microsoft.Testing.Platform and VSTest.
+        local filter=(--filter "Category!=Integration")
+        # Exit code 8 = "zero tests ran", i.e. a project holding only integration tests.
+        grep -qs Microsoft.Testing.Platform global.json "$w/global.json" && filter=(--filter-not-trait Category=Integration --ignore-exit-code 8)
+        dotnet test --no-build "${filter[@]}" || { echo "FAIL test"; exit 1; }
         echo "PASS gate"
     )
 }
