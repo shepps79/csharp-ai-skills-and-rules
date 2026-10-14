@@ -1,0 +1,17 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..2392b2d 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -11,4 +11,12 @@ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapPost("/orders", async (PlaceOrderRequest request, PlaceOrderUseCase useCase, CancellationToken cancellationToken) =>
++{
++    var result = await useCase.ExecuteAsync(request, cancellationToken);
++    return result is { IsSuccess: true, Value: var order }
++        ? Results.Created($"/orders/{order.Id}", order)
++        : Results.BadRequest(result.Error);
++});
++
+ app.Run();

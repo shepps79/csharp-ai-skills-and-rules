@@ -1,0 +1,2 @@
+dotnet-functional.md: Prefer Match over IsSuccess/HasValue boolean checks followed by .Value
+dotnet-csharp14-idioms.md: `is { IsSuccess: true, Value: var order }` example (tension 2: Match wins)

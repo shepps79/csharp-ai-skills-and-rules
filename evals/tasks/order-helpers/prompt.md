@@ -1,0 +1,1 @@
+The use cases in the Application layer keep needing to work out the total value of a set of order lines, and whether a set of lines contains a given SKU. Add something reusable for both so the use cases can just call it.

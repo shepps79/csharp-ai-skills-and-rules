@@ -1,0 +1,2 @@
+dotnet-csharp14-idioms.md: Extension members — extension<T>(...) blocks
+dotnet-functional.md: Prefer LINQ over loops
