@@ -1,0 +1,143 @@
+# Compiler-enforceable rules from .claude/rules/*.md, using built-in SDK analyzers only.
+# Pair with Directory.Build.props (EnforceCodeStyleInBuild) and TreatWarningsAsErrors per csproj.
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{csproj,props,targets,slnx,xml,json}]
+indent_size = 2
+
+[*.cs]
+# File-scoped namespaces (dotnet.md: Code Style)
+csharp_style_namespace_declarations = file_scoped:warning
+dotnet_diagnostic.IDE0161.severity = warning
+
+# Braces on all control flow (dotnet.md: Code Style)
+csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning
+
+# var when the type is apparent (dotnet.md: Naming)
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_for_built_in_types = true:warning
+csharp_style_var_elsewhere = true:warning
+dotnet_diagnostic.IDE0007.severity = warning
+
+# Language keywords over framework types (dotnet.md: Naming). Not reported by build; caught by `dotnet format`.
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+dotnet_diagnostic.IDE0049.severity = warning
+
+# Primary constructors (dotnet.md: Code Style)
+csharp_style_prefer_primary_constructors = true:warning
+dotnet_diagnostic.IDE0290.severity = warning
+
+# nameof over typeof(...).Name (dotnet.md: Code Style)
+dotnet_diagnostic.IDE0082.severity = warning
+
+# No redundant qualifiers (dotnet.md: Code Style)
+dotnet_diagnostic.IDE0001.severity = warning
+dotnet_diagnostic.IDE0002.severity = warning
+
+# Unused usings (dotnet.md: General Principles)
+dotnet_diagnostic.IDE0005.severity = warning
+
+# XML docs on public members (dotnet.md: General Principles)
+dotnet_diagnostic.CS1591.severity = warning
+
+# Structured logging, no interpolated templates (dotnet.md: Code Style)
+dotnet_diagnostic.CA2254.severity = warning
+
+# Pass CancellationToken through async chains (dotnet.md: Code Style)
+dotnet_diagnostic.CA2016.severity = warning
+
+# Every switch branch implemented (dotnet.md: Code Style)
+dotnet_diagnostic.IDE0010.severity = warning
+dotnet_diagnostic.IDE0072.severity = warning
+
+# Switch expressions over switch statements (csharp14-idioms: Pattern matching)
+csharp_style_prefer_switch_expression = true:warning
+dotnet_diagnostic.IDE0066.severity = warning
+
+# Expression-bodied members (dotnet-functional: Expression-bodied members)
+csharp_style_expression_bodied_methods = true:warning
+csharp_style_expression_bodied_properties = true:warning
+csharp_style_expression_bodied_accessors = true:warning
+csharp_style_expression_bodied_indexers = true:warning
+csharp_style_expression_bodied_lambdas = true:warning
+csharp_style_expression_bodied_local_functions = true:warning
+csharp_style_expression_bodied_operators = true:warning
+dotnet_diagnostic.IDE0022.severity = warning
+dotnet_diagnostic.IDE0025.severity = warning
+dotnet_diagnostic.IDE0026.severity = warning
+dotnet_diagnostic.IDE0027.severity = warning
+dotnet_diagnostic.IDE0053.severity = warning
+dotnet_diagnostic.IDE0061.severity = warning
+dotnet_diagnostic.IDE0023.severity = warning
+dotnet_diagnostic.IDE0024.severity = warning
+
+# Collection expressions (csharp14-idioms: Collection expressions)
+dotnet_style_prefer_collection_expression = when_types_loosely_match:warning
+dotnet_diagnostic.IDE0028.severity = warning
+dotnet_diagnostic.IDE0300.severity = warning
+dotnet_diagnostic.IDE0301.severity = warning
+dotnet_diagnostic.IDE0302.severity = warning
+dotnet_diagnostic.IDE0303.severity = warning
+dotnet_diagnostic.IDE0304.severity = warning
+dotnet_diagnostic.IDE0305.severity = warning
+
+# Naming (dotnet.md: Naming)
+dotnet_diagnostic.IDE1006.severity = warning
+
+dotnet_naming_rule.interfaces_begin_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_begin_with_i.style = i_prefix
+dotnet_naming_rule.interfaces_begin_with_i.severity = warning
+
+dotnet_naming_rule.async_methods_end_in_async.symbols = async_methods
+dotnet_naming_rule.async_methods_end_in_async.style = async_suffix
+dotnet_naming_rule.async_methods_end_in_async.severity = warning
+
+dotnet_naming_rule.private_fields_are_underscore_camel.symbols = private_fields
+dotnet_naming_rule.private_fields_are_underscore_camel.style = underscore_camel
+dotnet_naming_rule.private_fields_are_underscore_camel.severity = warning
+
+dotnet_naming_rule.constants_are_pascal.symbols = constants
+dotnet_naming_rule.constants_are_pascal.style = pascal
+dotnet_naming_rule.constants_are_pascal.severity = warning
+
+dotnet_naming_rule.locals_and_parameters_are_camel.symbols = locals_and_parameters
+dotnet_naming_rule.locals_and_parameters_are_camel.style = camel
+dotnet_naming_rule.locals_and_parameters_are_camel.severity = warning
+
+dotnet_naming_rule.members_are_pascal.symbols = members
+dotnet_naming_rule.members_are_pascal.style = pascal
+dotnet_naming_rule.members_are_pascal.severity = warning
+
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.async_methods.applicable_kinds = method
+dotnet_naming_symbols.async_methods.required_modifiers = async
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.required_modifiers = const
+dotnet_naming_symbols.locals_and_parameters.applicable_kinds = local, parameter
+dotnet_naming_symbols.members.applicable_kinds = namespace, class, struct, enum, interface, delegate, method, property, event
+
+dotnet_naming_style.i_prefix.required_prefix = I
+dotnet_naming_style.i_prefix.capitalization = pascal_case
+dotnet_naming_style.async_suffix.required_suffix = Async
+dotnet_naming_style.async_suffix.capitalization = pascal_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.pascal.capitalization = pascal_case
+dotnet_naming_style.camel.capitalization = camel_case
+
+# Test projects: no XML docs on test classes, and test names follow
+# Method_Expected_Scenario (testing.md), which takes precedence over the Async suffix.
+[src/*Tests/**.cs]
+dotnet_diagnostic.CS1591.severity = none
+dotnet_naming_rule.async_methods_end_in_async.severity = none

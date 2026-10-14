@@ -1,0 +1,7 @@
+<Project>
+  <!-- Makes the IDE* code-style rules in .editorconfig fail the build, and lets IDE0005 (unused usings) run at build time. -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
