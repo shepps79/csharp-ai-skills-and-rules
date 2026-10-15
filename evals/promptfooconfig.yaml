@@ -215,6 +215,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:warningsAsErrors, metric: warnings-as-errors }
       - { type: javascript, value: file://graders/checks.js:layeredProjects, metric: layered-projects }
       - { type: javascript, value: file://graders/checks.js:testsUnderSrc, metric: tests-under-src }
+      - { type: javascript, value: file://graders/checks.js:coverletPackages, metric: coverlet-packages }
       - { type: javascript, value: file://graders/checks.js:functionalLibrary, metric: functional-library }
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
