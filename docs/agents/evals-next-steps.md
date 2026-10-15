@@ -49,6 +49,13 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    changing their task text, which changes the yardstick.
 7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
    rules settle and run `eval-pairwise` in both orders.
+8. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
+   the agent's production code, not its tests, and only one judge-rubric line covers the tests. Add an
+   `httpTestDoubles` check for `customer-name` and `reserve-stock` that fails tests which mock `HttpClient` (its
+   `GetAsync` family isn't virtual, so the setup never intercepts) or `IHttpClientFactory` (only needed by code calling
+   `CreateClient`, which `typedHttpClient` already fails), or that call a real `http(s)://` host. It should pass port
+   mocks (`Mock<ICustomerDirectory>`) for service tests and a stubbed `HttpMessageHandler` (hand-written, or
+   `Moq.Protected` on `SendAsync`) for adapter tests.
 
 ## Rule problems the evals now surface
 
@@ -66,6 +73,10 @@ These are measured, not fixed; they are inputs for the next round of rule change
 - No rule covers outbound HTTP: typed clients from `IHttpClientFactory`, no `new HttpClient`, and
   `AddStandardResilienceHandler` are graded (`customer-name`, `reserve-stock`; checks `typedHttpClient` and
   `httpResilience`) but only Microsoft's guidance drives them. Expect them to fail until a rule or skill teaches them.
+- No rule says how to test an outbound HTTP adapter, and the two that come close conflict: `hexagonal-architecture.md`
+  says to integration-test adapters against TestContainers, which a third-party HTTP service doesn't have (WireMock.Net
+  is the usual stand-in), while `testing.md` says Moq mocks only ports. Agents improvise: mocked `HttpClient`, real
+  network calls, or no adapter tests at all.
 - `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
 
 ## Compiler-enforced rules
