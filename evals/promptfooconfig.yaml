@@ -29,6 +29,7 @@ defaultTest:
   assert:
     - { type: javascript, value: file://graders/checks.js:build, metric: build, weight: 3 }
     - { type: javascript, value: file://graders/checks.js:tests, metric: tests, weight: 3 }
+    - { type: javascript, value: file://graders/checks.js:coverage, metric: coverage }
     - { type: javascript, value: file://graders/checks.js:projectsInSolution, metric: projects-in-solution }
     - { type: javascript, value: file://graders/checks.js:noWarningSuppression, metric: no-warning-suppression }
     - { type: javascript, value: file://graders/checks.js:centralPackageVersions, metric: central-packages }

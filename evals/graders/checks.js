@@ -23,6 +23,24 @@ module.exports = {
     return result(testsOk, `${passed} passed, ${failed} failed`);
   },
 
+  // Line coverage of the production files the agent changed, or of all production code for a tests-only change.
+  // Scored by the coverage itself, so 70% and 10% aren't both just "fail".
+  coverage: (_, { metadata, config }) => {
+    const minimum = config?.minimum ?? 0.8;
+    const files = metadata.dotnet.coverage;
+    if (!files) {
+      return result(false, 'no coverage report: the test projects need coverlet.collector');
+    }
+    const changed = Object.keys(files).filter((file) => metadata.changedFiles.includes(file));
+    const scope = changed.length ? changed : Object.keys(files);
+    const covered = scope.reduce((total, file) => total + files[file].covered, 0);
+    const lines = scope.reduce((total, file) => total + files[file].lines, 0);
+    const rate = lines ? covered / lines : 0;
+    const pass = rate >= minimum;
+    const reason = `${Math.round(rate * 100)}% of ${lines} lines in ${changed.length ? 'changed' : 'all'} production files, need ${minimum * 100}%`;
+    return { pass, score: rate, reason };
+  },
+
   // Counts test attributes the diff adds (the fixture's own tests don't count); the tests check proves they pass.
   testsAdded: (output, { config }) => {
     const minimum = config?.minimum ?? 3;

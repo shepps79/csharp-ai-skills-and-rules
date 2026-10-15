@@ -30,9 +30,10 @@ function run(changes) {
   return { metadata: { runDir, changedFiles }, diff: git('diff', '--cached', 'HEAD') };
 }
 
-const passes = (check, changes) => {
+// `recorded` stands in for what the provider records beyond the diff (dotnet results, agent transcript summary).
+const passes = (check, changes, recorded = {}, config = undefined) => {
   const { metadata, diff } = run(changes);
-  return checks[check](diff, { metadata }).pass;
+  return checks[check](diff, { metadata: { ...metadata, ...recorded }, config }).pass;
 };
 
 test('testsAdded ignores existing and skipped tests', () => {
@@ -89,4 +90,13 @@ test('layeredProjects requires a web API driving Application and inward-only ref
     ...layers, ...api(ref('X.Application')),
     'src/X.Infrastructure/X.Infrastructure.csproj': `<Project Sdk="Microsoft.NET.Sdk">${ref('X.Api')}</Project>`,
   }), false);
+});
+
+test('coverage scores changed production files, or everything for a tests-only change', () => {
+  const coverage = (files) => ({ dotnet: { coverage: files } });
+  const service = { 'src/X.Application/Service.cs': 'class S;' };
+  const files = { 'src/X.Application/Service.cs': { covered: 1, lines: 4 }, 'src/X.Domain/Order.cs': { covered: 20, lines: 20 } };
+  assert.equal(passes('coverage', service, coverage(files)), false);
+  assert.equal(passes('coverage', { 'src/X.UnitTests/STests.cs': '[Fact]' }, coverage(files)), true);
+  assert.equal(passes('coverage', service, { dotnet: { coverage: null } }), false);
 });

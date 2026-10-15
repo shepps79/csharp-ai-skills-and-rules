@@ -134,17 +134,54 @@ function stageAndListChanges(runDir) {
 function buildAndTest(runDir) {
   const build = dotnet(runDir, ['build', '-warnaserror']);
   if (!build.ok) {
-    return { buildOk: false, testsOk: false, passed: 0, failed: 0, log: build.log.slice(-4000) };
+    return { buildOk: false, testsOk: false, passed: 0, failed: 0, coverage: null, log: build.log.slice(-4000) };
   }
-  const test = dotnet(runDir, ['test', '--no-build']);
-  const sum = (pattern) => [...test.log.matchAll(pattern)].reduce((total, m) => total + Number(m[1]), 0);
+  const test = dotnet(runDir, ['test', '--no-build', '--collect', 'XPlat Code Coverage', '--results-directory', 'TestResults']);
   return {
     buildOk: true,
     testsOk: test.ok,
-    passed: sum(/(?:passed|succeeded):\s+(\d+)/gi), // VSTest "Passed: n", Testing Platform "succeeded: n"
-    failed: sum(/failed:\s+(\d+)/gi),
+    ...testCounts(test.log),
+    coverage: lineCoverage(runDir),
     log: test.log.slice(-4000),
   };
+}
+
+function testCounts(log) {
+  const sum = (pattern) => [...log.matchAll(pattern)].reduce((total, m) => total + Number(m[1]), 0);
+  // VSTest "Passed: n", Testing Platform "succeeded: n"
+  return { passed: sum(/(?:passed|succeeded):\s+(\d+)/gi), failed: sum(/failed:\s+(\d+)/gi) };
+}
+
+// Covered and coverable lines per production file, merged across test projects: a line counts as covered when
+// any project's tests hit it. null when no coverlet.collector report was written.
+function lineCoverage(runDir) {
+  const resultsDir = path.join(runDir, 'TestResults');
+  const reports = fs.existsSync(resultsDir)
+    ? fs.readdirSync(resultsDir, { recursive: true }).filter((file) => file.endsWith('coverage.cobertura.xml'))
+    : [];
+  if (reports.length === 0) {
+    return null;
+  }
+  const hitByLine = new Map();
+  for (const report of reports) {
+    const xml = fs.readFileSync(path.join(resultsDir, report), 'utf8');
+    const source = xml.match(/<source>([^<]*)<\/source>/)?.[1] ?? runDir;
+    for (const [, filename, body] of xml.matchAll(/<class [^>]*filename="([^"]+)"[^>]*>([\s\S]*?)<\/class>/g)) {
+      const file = path.relative(runDir, path.resolve(source, filename));
+      for (const [, line, hits] of body.matchAll(/<line number="(\d+)" hits="(\d+)"/g)) {
+        const key = `${file}:${line}`;
+        hitByLine.set(key, hitByLine.get(key) || Number(hits) > 0);
+      }
+    }
+  }
+  const files = {};
+  for (const [key, hit] of hitByLine) {
+    const file = key.slice(0, key.lastIndexOf(':'));
+    files[file] ??= { covered: 0, lines: 0 };
+    files[file].lines += 1;
+    files[file].covered += Number(hit);
+  }
+  return files;
 }
 
 function summariseTranscript(events, result) {
