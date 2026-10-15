@@ -1,0 +1,1 @@
+Clients send their own purchase-order number with each order. Store it on the order, and if a customer sends a purchase-order number they've already used, respond with 409 Conflict instead of creating a second order.

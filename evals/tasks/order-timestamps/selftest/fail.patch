@@ -1,0 +1,143 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..956707d 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
+ 
+ builder.Services.AddDbContext<OrdersDbContext>(options =>
+     options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
++builder.Services.AddSingleton<IClock, SystemClock>();
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+diff --git a/src/Orders.Application/IClock.cs b/src/Orders.Application/IClock.cs
+new file mode 100644
+index 0000000..5c6027c
+--- /dev/null
++++ b/src/Orders.Application/IClock.cs
+@@ -0,0 +1,8 @@
++namespace Orders.Application;
++
++/// <summary>Supplies the current time.</summary>
++public interface IClock
++{
++    /// <summary>The current UTC time.</summary>
++    DateTimeOffset UtcNow { get; }
++}
+diff --git a/src/Orders.Application/OrderDto.cs b/src/Orders.Application/OrderDto.cs
+index c0751a9..4cc12cc 100644
+--- a/src/Orders.Application/OrderDto.cs
++++ b/src/Orders.Application/OrderDto.cs
+@@ -7,10 +7,11 @@ namespace Orders.Application;
+ /// <param name="CustomerId">Customer who placed the order.</param>
+ /// <param name="Status">Where the order is in its lifecycle.</param>
+ /// <param name="Lines">Products and quantities ordered.</param>
+-public sealed record OrderDto(Guid Id, string CustomerId, OrderStatus Status, IReadOnlyList<OrderLineDto> Lines)
++/// <param name="PlacedAt">When the order was placed.</param>
++public sealed record OrderDto(Guid Id, string CustomerId, OrderStatus Status, IReadOnlyList<OrderLineDto> Lines, DateTimeOffset PlacedAt)
+ {
+     /// <summary>Maps a domain order to its caller-facing shape.</summary>
+     /// <param name="order">Order to map.</param>
+     public static OrderDto From(Order order) =>
+-        new(order.Id, order.CustomerId, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice))]);
++        new(order.Id, order.CustomerId, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice))], order.PlacedAt);
+ }
+diff --git a/src/Orders.Application/PlaceOrderUseCase.cs b/src/Orders.Application/PlaceOrderUseCase.cs
+index 6caa1d1..8a862aa 100644
+--- a/src/Orders.Application/PlaceOrderUseCase.cs
++++ b/src/Orders.Application/PlaceOrderUseCase.cs
+@@ -5,14 +5,15 @@ namespace Orders.Application;
+ 
+ /// <summary>Places a new order for a customer.</summary>
+ /// <param name="repository">Where placed orders are stored.</param>
+-public sealed class PlaceOrderUseCase(IOrderRepository repository)
++/// <param name="clock">Supplies the time the order is placed.</param>
++public sealed class PlaceOrderUseCase(IOrderRepository repository, IClock clock)
+ {
+     /// <summary>Validates and stores the order.</summary>
+     /// <param name="request">Order to place.</param>
+     /// <param name="cancellationToken">Cancels the operation.</param>
+     /// <returns>The placed order, or the validation errors.</returns>
+     public Task<Result<OrderDto>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken) =>
+-        Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))])
++        Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))], clock.UtcNow)
+             .Tap(order => repository.AddAsync(order, cancellationToken))
+             .Map(OrderDto.From);
+ }
+diff --git a/src/Orders.Domain/Order.cs b/src/Orders.Domain/Order.cs
+index 9f41b54..e88ca30 100644
+--- a/src/Orders.Domain/Order.cs
++++ b/src/Orders.Domain/Order.cs
+@@ -17,10 +17,14 @@ public sealed record Order
+     /// <summary>Where the order is in its lifecycle.</summary>
+     public required OrderStatus Status { get; init; }
+ 
++    /// <summary>When the order was placed.</summary>
++    public required DateTimeOffset PlacedAt { get; init; }
++
+     /// <summary>Creates a pending order, or every validation error found.</summary>
+     /// <param name="customerId">Customer placing the order.</param>
+     /// <param name="lines">Products and quantities ordered.</param>
+-    public static Result<Order> Create(string customerId, IReadOnlyList<OrderLine> lines) =>
++    /// <param name="placedAt">When the order was placed.</param>
++    public static Result<Order> Create(string customerId, IReadOnlyList<OrderLine> lines, DateTimeOffset placedAt) =>
+         Result.Combine(
+                 Result.FailureIf(string.IsNullOrWhiteSpace(customerId), "Customer id is required."),
+                 Result.FailureIf(lines.Count == 0, "An order needs at least one line."),
+@@ -31,5 +35,6 @@ public sealed record Order
+                 CustomerId = customerId,
+                 Lines = lines,
+                 Status = OrderStatus.Pending,
++                PlacedAt = placedAt,
+             });
+ }
+diff --git a/src/Orders.Infrastructure/EfOrderRepository.cs b/src/Orders.Infrastructure/EfOrderRepository.cs
+index 70be76f..e24729b 100644
+--- a/src/Orders.Infrastructure/EfOrderRepository.cs
++++ b/src/Orders.Infrastructure/EfOrderRepository.cs
+@@ -26,6 +26,7 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         Id = entity.Id,
+         CustomerId = entity.CustomerId,
+         Status = Enum.Parse<OrderStatus>(entity.Status),
++        PlacedAt = entity.PlacedAt,
+         Lines = [.. entity.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))],
+     };
+ 
+@@ -34,6 +35,7 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         Id = order.Id,
+         CustomerId = order.CustomerId,
+         Status = order.Status.ToString(),
++        PlacedAt = order.PlacedAt,
+         Lines = [.. order.Lines.Select(line => new OrderLineEntity { Sku = line.Sku, Quantity = line.Quantity, UnitPrice = line.UnitPrice })],
+     };
+ }
+diff --git a/src/Orders.Infrastructure/OrderEntity.cs b/src/Orders.Infrastructure/OrderEntity.cs
+index 659382d..0e09f63 100644
+--- a/src/Orders.Infrastructure/OrderEntity.cs
++++ b/src/Orders.Infrastructure/OrderEntity.cs
+@@ -12,6 +12,9 @@ public sealed class OrderEntity
+     /// <summary>Order status name.</summary>
+     public required string Status { get; set; }
+ 
++    /// <summary>When the order was placed.</summary>
++    public DateTimeOffset PlacedAt { get; set; }
++
+     /// <summary>Order lines, stored as JSON.</summary>
+     public required ICollection<OrderLineEntity> Lines { get; set; }
+ }
+diff --git a/src/Orders.Infrastructure/SystemClock.cs b/src/Orders.Infrastructure/SystemClock.cs
+new file mode 100644
+index 0000000..7ce31af
+--- /dev/null
++++ b/src/Orders.Infrastructure/SystemClock.cs
+@@ -0,0 +1,10 @@
++using Orders.Application;
++
++namespace Orders.Infrastructure;
++
++/// <summary>Reads the system clock.</summary>
++public sealed class SystemClock : IClock
++{
++    /// <inheritdoc />
++    public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
++}

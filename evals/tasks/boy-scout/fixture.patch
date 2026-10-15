@@ -1,0 +1,29 @@
+diff --git a/src/Orders.Application/OrderSummaryService.cs b/src/Orders.Application/OrderSummaryService.cs
+new file mode 100644
+index 0000000..17186b6
+--- /dev/null
++++ b/src/Orders.Application/OrderSummaryService.cs
+@@ -0,0 +1,23 @@
++namespace Orders.Application;
++
++/// <summary>Builds short human-readable descriptions of orders.</summary>
++public sealed class OrderSummaryService
++{
++    /// <summary>One-line summary of an order for customer emails.</summary>
++    /// <param name="order">Order to summarise.</param>
++    public string Summarise(OrderDto order)
++    {
++        // var total = order.Lines.Sum(line => line.UnitPrice);
++        var tmp = order.Lines.Sum(line => line.Quantity);
++        return $"Order {order.Id}: {tmp} items";
++    }
++
++    /// <summary>Status line for the support dashboard.</summary>
++    /// <param name="order">Order to describe.</param>
++    public string Describe(OrderDto order)
++    {
++        // var debug = order.ToString();
++        var tmp = order.Status.ToString().ToLowerInvariant();
++        return $"{order.CustomerId}: {tmp}";
++    }
++}

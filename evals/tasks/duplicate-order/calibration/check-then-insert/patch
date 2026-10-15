@@ -1,0 +1,301 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 1445f07..87e86fe 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -16,6 +16,11 @@ app.MapPost("/orders", (PlaceOrderRequest request, PlaceOrderUseCase useCase, Ca
+     useCase.ExecuteAsync(request, cancellationToken)
+         .Match(
+             order => Results.Created($"/orders/{order.Id}", order),
+-            error => Results.BadRequest(error)));
++            error => error.Kind switch
++            {
++                PlaceOrderErrorKind.Invalid => Results.BadRequest(error.Message),
++                PlaceOrderErrorKind.DuplicatePurchaseOrder => Results.Conflict(error.Message),
++                _ => throw new NotImplementedException(),
++            }));
+ 
+ app.Run();
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..f896de5 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -15,4 +15,10 @@ public interface IOrderRepository
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>
+     Task AddAsync(Order order, CancellationToken cancellationToken);
++
++    /// <summary>Whether the customer has already used a purchase-order number.</summary>
++    /// <param name="customerId">Customer to check.</param>
++    /// <param name="purchaseOrderNumber">Purchase-order number to look for.</param>
++    /// <param name="cancellationToken">Cancels the query.</param>
++    Task<bool> PurchaseOrderExistsAsync(string customerId, string purchaseOrderNumber, CancellationToken cancellationToken);
+ }
+diff --git a/src/Orders.Application/OrderDto.cs b/src/Orders.Application/OrderDto.cs
+index c0751a9..8940e76 100644
+--- a/src/Orders.Application/OrderDto.cs
++++ b/src/Orders.Application/OrderDto.cs
+@@ -5,12 +5,13 @@ namespace Orders.Application;
+ /// <summary>An order as returned to callers.</summary>
+ /// <param name="Id">Unique identifier of the order.</param>
+ /// <param name="CustomerId">Customer who placed the order.</param>
++/// <param name="PurchaseOrderNumber">The customer's own purchase-order number.</param>
+ /// <param name="Status">Where the order is in its lifecycle.</param>
+ /// <param name="Lines">Products and quantities ordered.</param>
+-public sealed record OrderDto(Guid Id, string CustomerId, OrderStatus Status, IReadOnlyList<OrderLineDto> Lines)
++public sealed record OrderDto(Guid Id, string CustomerId, string PurchaseOrderNumber, OrderStatus Status, IReadOnlyList<OrderLineDto> Lines)
+ {
+     /// <summary>Maps a domain order to its caller-facing shape.</summary>
+     /// <param name="order">Order to map.</param>
+     public static OrderDto From(Order order) =>
+-        new(order.Id, order.CustomerId, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice))]);
++        new(order.Id, order.CustomerId, order.PurchaseOrderNumber, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice))]);
+ }
+diff --git a/src/Orders.Application/PlaceOrderError.cs b/src/Orders.Application/PlaceOrderError.cs
+new file mode 100644
+index 0000000..520a5d1
+--- /dev/null
++++ b/src/Orders.Application/PlaceOrderError.cs
+@@ -0,0 +1,6 @@
++namespace Orders.Application;
++
++/// <summary>Why an order could not be placed.</summary>
++/// <param name="Kind">Category of the failure.</param>
++/// <param name="Message">Human-readable explanation.</param>
++public sealed record PlaceOrderError(PlaceOrderErrorKind Kind, string Message);
+diff --git a/src/Orders.Application/PlaceOrderErrorKind.cs b/src/Orders.Application/PlaceOrderErrorKind.cs
+new file mode 100644
+index 0000000..2a674b4
+--- /dev/null
++++ b/src/Orders.Application/PlaceOrderErrorKind.cs
+@@ -0,0 +1,11 @@
++namespace Orders.Application;
++
++/// <summary>Categories of <see cref="PlaceOrderError"/>.</summary>
++public enum PlaceOrderErrorKind
++{
++    /// <summary>The request failed validation.</summary>
++    Invalid,
++
++    /// <summary>The customer already used this purchase-order number.</summary>
++    DuplicatePurchaseOrder,
++}
+diff --git a/src/Orders.Application/PlaceOrderRequest.cs b/src/Orders.Application/PlaceOrderRequest.cs
+index d6a9e30..dc9e1f5 100644
+--- a/src/Orders.Application/PlaceOrderRequest.cs
++++ b/src/Orders.Application/PlaceOrderRequest.cs
+@@ -2,5 +2,6 @@ namespace Orders.Application;
+ 
+ /// <summary>Input for placing an order.</summary>
+ /// <param name="CustomerId">Customer placing the order.</param>
++/// <param name="PurchaseOrderNumber">The customer's own purchase-order number.</param>
+ /// <param name="Lines">Products and quantities to order.</param>
+-public sealed record PlaceOrderRequest(string CustomerId, IReadOnlyList<OrderLineDto> Lines);
++public sealed record PlaceOrderRequest(string CustomerId, string PurchaseOrderNumber, IReadOnlyList<OrderLineDto> Lines);
+diff --git a/src/Orders.Application/PlaceOrderUseCase.cs b/src/Orders.Application/PlaceOrderUseCase.cs
+index 6caa1d1..3412671 100644
+--- a/src/Orders.Application/PlaceOrderUseCase.cs
++++ b/src/Orders.Application/PlaceOrderUseCase.cs
+@@ -10,9 +10,17 @@ public sealed class PlaceOrderUseCase(IOrderRepository repository)
+     /// <summary>Validates and stores the order.</summary>
+     /// <param name="request">Order to place.</param>
+     /// <param name="cancellationToken">Cancels the operation.</param>
+-    /// <returns>The placed order, or the validation errors.</returns>
+-    public Task<Result<OrderDto>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken) =>
+-        Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))])
++    /// <returns>The placed order, or why it could not be placed.</returns>
++    public async Task<Result<OrderDto, PlaceOrderError>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken)
++    {
++        if (await repository.PurchaseOrderExistsAsync(request.CustomerId, request.PurchaseOrderNumber, cancellationToken))
++        {
++            return new PlaceOrderError(PlaceOrderErrorKind.DuplicatePurchaseOrder, $"Purchase order {request.PurchaseOrderNumber} has already been used.");
++        }
++
++        return await Order.Create(request.CustomerId, request.PurchaseOrderNumber, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))])
++            .MapError(message => new PlaceOrderError(PlaceOrderErrorKind.Invalid, message))
+             .Tap(order => repository.AddAsync(order, cancellationToken))
+             .Map(OrderDto.From);
++    }
+ }
+diff --git a/src/Orders.Domain/Order.cs b/src/Orders.Domain/Order.cs
+index 9f41b54..163dc2f 100644
+--- a/src/Orders.Domain/Order.cs
++++ b/src/Orders.Domain/Order.cs
+@@ -11,6 +11,9 @@ public sealed record Order
+     /// <summary>Customer who placed the order.</summary>
+     public required string CustomerId { get; init; }
+ 
++    /// <summary>The customer's own purchase-order number, unique per customer.</summary>
++    public required string PurchaseOrderNumber { get; init; }
++
+     /// <summary>Products and quantities ordered.</summary>
+     public required IReadOnlyList<OrderLine> Lines { get; init; }
+ 
+@@ -19,16 +22,19 @@ public sealed record Order
+ 
+     /// <summary>Creates a pending order, or every validation error found.</summary>
+     /// <param name="customerId">Customer placing the order.</param>
++    /// <param name="purchaseOrderNumber">The customer's own purchase-order number.</param>
+     /// <param name="lines">Products and quantities ordered.</param>
+-    public static Result<Order> Create(string customerId, IReadOnlyList<OrderLine> lines) =>
++    public static Result<Order> Create(string customerId, string purchaseOrderNumber, IReadOnlyList<OrderLine> lines) =>
+         Result.Combine(
+                 Result.FailureIf(string.IsNullOrWhiteSpace(customerId), "Customer id is required."),
++                Result.FailureIf(string.IsNullOrWhiteSpace(purchaseOrderNumber), "Purchase-order number is required."),
+                 Result.FailureIf(lines.Count == 0, "An order needs at least one line."),
+                 Result.FailureIf(lines.Any(line => line.Quantity <= 0), "Every line needs a positive quantity."))
+             .Map(() => new Order
+             {
+                 Id = Guid.NewGuid(),
+                 CustomerId = customerId,
++                PurchaseOrderNumber = purchaseOrderNumber,
+                 Lines = lines,
+                 Status = OrderStatus.Pending,
+             });
+diff --git a/src/Orders.Infrastructure/EfOrderRepository.cs b/src/Orders.Infrastructure/EfOrderRepository.cs
+index 70be76f..3f499da 100644
+--- a/src/Orders.Infrastructure/EfOrderRepository.cs
++++ b/src/Orders.Infrastructure/EfOrderRepository.cs
+@@ -21,10 +21,15 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         await db.SaveChangesAsync(cancellationToken);
+     }
+ 
++    /// <inheritdoc />
++    public Task<bool> PurchaseOrderExistsAsync(string customerId, string purchaseOrderNumber, CancellationToken cancellationToken) =>
++        db.Orders.AnyAsync(order => order.CustomerId == customerId && order.PurchaseOrderNumber == purchaseOrderNumber, cancellationToken);
++
+     private static Order ToDomain(OrderEntity entity) => new()
+     {
+         Id = entity.Id,
+         CustomerId = entity.CustomerId,
++        PurchaseOrderNumber = entity.PurchaseOrderNumber,
+         Status = Enum.Parse<OrderStatus>(entity.Status),
+         Lines = [.. entity.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))],
+     };
+@@ -33,6 +38,7 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+     {
+         Id = order.Id,
+         CustomerId = order.CustomerId,
++        PurchaseOrderNumber = order.PurchaseOrderNumber,
+         Status = order.Status.ToString(),
+         Lines = [.. order.Lines.Select(line => new OrderLineEntity { Sku = line.Sku, Quantity = line.Quantity, UnitPrice = line.UnitPrice })],
+     };
+diff --git a/src/Orders.Infrastructure/OrderEntity.cs b/src/Orders.Infrastructure/OrderEntity.cs
+index 659382d..e09de4b 100644
+--- a/src/Orders.Infrastructure/OrderEntity.cs
++++ b/src/Orders.Infrastructure/OrderEntity.cs
+@@ -9,6 +9,9 @@ public sealed class OrderEntity
+     /// <summary>Customer who placed the order.</summary>
+     public required string CustomerId { get; set; }
+ 
++    /// <summary>The customer's own purchase-order number.</summary>
++    public required string PurchaseOrderNumber { get; set; }
++
+     /// <summary>Order status name.</summary>
+     public required string Status { get; set; }
+ 
+diff --git a/src/Orders.Infrastructure/OrdersDbContext.cs b/src/Orders.Infrastructure/OrdersDbContext.cs
+index 3d1c748..dd387bd 100644
+--- a/src/Orders.Infrastructure/OrdersDbContext.cs
++++ b/src/Orders.Infrastructure/OrdersDbContext.cs
+@@ -10,6 +10,9 @@ public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) :
+     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
+ 
+     /// <inheritdoc />
+-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+-        modelBuilder.Entity<OrderEntity>().OwnsMany(order => order.Lines, lines => lines.ToJson());
++    protected override void OnModelCreating(ModelBuilder modelBuilder)
++    {
++        var order = modelBuilder.Entity<OrderEntity>();
++        order.OwnsMany(entity => entity.Lines, lines => lines.ToJson());
++    }
+ }
+diff --git a/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs b/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
+index 07a1c67..4e40217 100644
+--- a/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
++++ b/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
+@@ -1,4 +1,5 @@
+ using AwesomeAssertions;
++using CSharpFunctionalExtensions;
+ using Moq;
+ using Orders.Application;
+ using Orders.Domain;
+@@ -12,9 +13,20 @@ public sealed class PlaceOrderUseCaseTests
+ 
+     public PlaceOrderUseCaseTests()
+     {
++        _repository
++            .Setup(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
++            .ReturnsAsync(UnitResult.Success<PlaceOrderError>());
+         _sut = new PlaceOrderUseCase(_repository.Object);
+     }
+ 
++    public static IEnumerable<TheoryDataRow<PlaceOrderRequest, string>> InvalidRequests =>
++    [
++        new(new PlaceOrderRequest("", "PO-1", [new OrderLineDto("SKU-1", 1, 5m)]), "Customer id is required."),
++        new(new PlaceOrderRequest("cust-1", "", [new OrderLineDto("SKU-1", 1, 5m)]), "Purchase-order number is required."),
++        new(new PlaceOrderRequest("cust-1", "PO-1", []), "An order needs at least one line."),
++        new(new PlaceOrderRequest("cust-1", "PO-1", [new OrderLineDto("SKU-1", 0, 5m)]), "Every line needs a positive quantity."),
++    ];
++
+     [Fact]
+     public async Task ExecuteAsync_ReturnsPendingOrder_WhenRequestIsValid()
+     {
+@@ -32,35 +44,46 @@ public sealed class PlaceOrderUseCaseTests
+         await _sut.ExecuteAsync(request, TestContext.Current.CancellationToken);
+ 
+         _repository.Verify(r => r.AddAsync(
+-            It.Is<Order>(o => o.CustomerId == request.CustomerId),
++            It.Is<Order>(o => o.CustomerId == request.CustomerId && o.PurchaseOrderNumber == request.PurchaseOrderNumber),
+             It.IsAny<CancellationToken>()), Times.Once);
+     }
+ 
+-    public static IEnumerable<TheoryDataRow<PlaceOrderRequest, string>> InvalidRequests =>
+-    [
+-        new(new PlaceOrderRequest("", [new OrderLineDto("SKU-1", 1, 5m)]), "Customer id is required."),
+-        new(new PlaceOrderRequest("cust-1", []), "An order needs at least one line."),
+-        new(new PlaceOrderRequest("cust-1", [new OrderLineDto("SKU-1", 0, 5m)]), "Every line needs a positive quantity."),
+-    ];
+-
+     [Theory]
+     [MemberData(nameof(InvalidRequests))]
+-    public async Task ExecuteAsync_ReturnsFailure_WhenRequestIsInvalid(PlaceOrderRequest request, string expectedError)
++    public async Task ExecuteAsync_ReturnsInvalid_WhenRequestIsInvalid(PlaceOrderRequest request, string expectedError)
+     {
+         var result = await _sut.ExecuteAsync(request, TestContext.Current.CancellationToken);
+ 
+         result.IsFailure.Should().BeTrue();
+-        result.Error.Should().Contain(expectedError);
++        result.Error.Kind.Should().Be(PlaceOrderErrorKind.Invalid);
++        result.Error.Message.Should().Contain(expectedError);
++    }
++
++    [Fact]
++    public async Task ExecuteAsync_ReturnsDuplicate_WhenPurchaseOrderNumberWasUsed()
++    {
++        // Arrange
++        var duplicate = new PlaceOrderError(PlaceOrderErrorKind.DuplicatePurchaseOrder, "used");
++        _repository
++            .Setup(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
++            .ReturnsAsync(UnitResult.Failure(duplicate));
++
++        // Act
++        var result = await _sut.ExecuteAsync(ValidRequest(), TestContext.Current.CancellationToken);
++
++        // Assert
++        result.IsFailure.Should().BeTrue();
++        result.Error.Should().Be(duplicate);
+     }
+ 
+     [Fact]
+     public async Task ExecuteAsync_DoesNotStoreOrder_WhenRequestIsInvalid()
+     {
+-        await _sut.ExecuteAsync(new PlaceOrderRequest("cust-1", []), TestContext.Current.CancellationToken);
++        await _sut.ExecuteAsync(new PlaceOrderRequest("cust-1", "PO-1", []), TestContext.Current.CancellationToken);
+ 
+         _repository.Verify(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+     }
+ 
+     private static PlaceOrderRequest ValidRequest() =>
+-        new("cust-1", [new OrderLineDto("SKU-1", 2, 9.99m), new OrderLineDto("SKU-2", 1, 25m)]);
++        new("cust-1", "PO-1", [new OrderLineDto("SKU-1", 2, 9.99m), new OrderLineDto("SKU-2", 1, 25m)]);
+ }

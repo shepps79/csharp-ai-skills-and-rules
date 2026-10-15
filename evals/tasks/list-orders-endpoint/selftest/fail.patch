@@ -1,0 +1,33 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..632983e 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -11,4 +11,14 @@ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapGet("/customers/{customerId}/orders", (string customerId, string? status, OrdersDbContext db) =>
++{
++    var all = db.Orders.ToList();
++    var mine = all.Where(o => o.CustomerId == customerId && (status == null || o.Status == status));
++    return new CustomerOrdersResponse
++    {
++        Orders = mine.Select(o => new OrderDto(o.Id, o.CustomerId, Enum.Parse<Orders.Domain.OrderStatus>(o.Status), o.Lines.Select(l => new OrderLineDto(l.Sku, l.Quantity, l.UnitPrice)).ToList())).ToList(),
++    };
++});
++
+ app.Run();
+diff --git a/src/Orders.Application/CustomerOrdersResponse.cs b/src/Orders.Application/CustomerOrdersResponse.cs
+new file mode 100644
+index 0000000..7a28a26
+--- /dev/null
++++ b/src/Orders.Application/CustomerOrdersResponse.cs
+@@ -0,0 +1,8 @@
++namespace Orders.Application;
++
++/// <summary>A customer's orders.</summary>
++public class CustomerOrdersResponse
++{
++    /// <summary>The orders.</summary>
++    public List<OrderDto> Orders { get; set; } = [];
++}

@@ -1,0 +1,129 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..b5f6b7b 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -1,5 +1,7 @@
++using CSharpFunctionalExtensions;
+ using Microsoft.EntityFrameworkCore;
+ using Orders.Application;
++using Orders.Domain;
+ using Orders.Infrastructure;
+ 
+ var builder = WebApplication.CreateBuilder(args);
+@@ -8,7 +10,11 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
+     options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
++builder.Services.AddScoped<ListCustomerOrdersUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapGet("/customers/{customerId}/orders", (string customerId, OrderStatus? status, int? page, int? pageSize, string? sortBy, ListCustomerOrdersUseCase useCase, CancellationToken cancellationToken) =>
++    useCase.ExecuteAsync(customerId, status.AsMaybe(), page ?? 1, pageSize ?? 50, sortBy ?? "id", cancellationToken));
++
+ app.Run();
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..8978992 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -15,4 +15,10 @@ public interface IOrderRepository
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>
+     Task AddAsync(Order order, CancellationToken cancellationToken);
++
++    /// <summary>Lists a customer's orders, optionally only those in one status.</summary>
++    /// <param name="customerId">Customer whose orders to list.</param>
++    /// <param name="status">Status to filter by, or none for every status.</param>
++    /// <param name="cancellationToken">Cancels the query.</param>
++    Task<IReadOnlyList<Order>> ListByCustomerAsync(string customerId, Maybe<OrderStatus> status, CancellationToken cancellationToken);
+ }
+diff --git a/src/Orders.Application/ListCustomerOrdersUseCase.cs b/src/Orders.Application/ListCustomerOrdersUseCase.cs
+new file mode 100644
+index 0000000..952589e
+--- /dev/null
++++ b/src/Orders.Application/ListCustomerOrdersUseCase.cs
+@@ -0,0 +1,23 @@
++using CSharpFunctionalExtensions;
++using Orders.Domain;
++
++namespace Orders.Application;
++
++/// <summary>Lists a customer's orders.</summary>
++/// <param name="repository">Where orders are stored.</param>
++public sealed class ListCustomerOrdersUseCase(IOrderRepository repository)
++{
++    /// <summary>Returns the customer's orders, optionally only those in one status.</summary>
++    /// <param name="customerId">Customer whose orders to list.</param>
++    /// <param name="status">Status to filter by, or none for every status.</param>
++    /// <param name="cancellationToken">Cancels the query.</param>
++    /// <param name="page">1-based page number.</param>
++    /// <param name="pageSize">Orders per page.</param>
++    /// <param name="sortBy">Field to sort by: "id" or "customer".</param>
++    public async Task<IReadOnlyList<OrderDto>> ExecuteAsync(string customerId, Maybe<OrderStatus> status, int page, int pageSize, string sortBy, CancellationToken cancellationToken) =>
++        [.. (await repository.ListByCustomerAsync(customerId, status, cancellationToken))
++            .OrderBy(order => sortBy == "customer" ? order.CustomerId : order.Id.ToString())
++            .Skip((page - 1) * pageSize)
++            .Take(pageSize)
++            .Select(OrderDto.From)];
++}
+diff --git a/src/Orders.Infrastructure/EfOrderRepository.cs b/src/Orders.Infrastructure/EfOrderRepository.cs
+index 70be76f..bc806d8 100644
+--- a/src/Orders.Infrastructure/EfOrderRepository.cs
++++ b/src/Orders.Infrastructure/EfOrderRepository.cs
+@@ -21,6 +21,16 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         await db.SaveChangesAsync(cancellationToken);
+     }
+ 
++    /// <inheritdoc />
++    public async Task<IReadOnlyList<Order>> ListByCustomerAsync(string customerId, Maybe<OrderStatus> status, CancellationToken cancellationToken)
++    {
++        var orders = db.Orders.AsNoTracking().Where(order => order.CustomerId == customerId);
++        var filtered = status.Match(
++            wanted => orders.Where(order => order.Status == wanted.ToString()),
++            () => orders);
++        return [.. (await filtered.ToListAsync(cancellationToken)).Select(ToDomain)];
++    }
++
+     private static Order ToDomain(OrderEntity entity) => new()
+     {
+         Id = entity.Id,
+diff --git a/src/Orders.UnitTests/Application/ListCustomerOrdersUseCaseTests.cs b/src/Orders.UnitTests/Application/ListCustomerOrdersUseCaseTests.cs
+new file mode 100644
+index 0000000..0b5b855
+--- /dev/null
++++ b/src/Orders.UnitTests/Application/ListCustomerOrdersUseCaseTests.cs
+@@ -0,0 +1,34 @@
++using AwesomeAssertions;
++using CSharpFunctionalExtensions;
++using Moq;
++using Orders.Application;
++using Orders.Domain;
++
++namespace Orders.UnitTests.Application;
++
++public sealed class ListCustomerOrdersUseCaseTests
++{
++    private readonly Mock<IOrderRepository> _repository = new();
++    private readonly ListCustomerOrdersUseCase _sut;
++
++    public ListCustomerOrdersUseCaseTests()
++    {
++        _sut = new ListCustomerOrdersUseCase(_repository.Object);
++    }
++
++    [Fact]
++    public async Task ExecuteAsync_ReturnsCustomersOrdersAsDtos()
++    {
++        // Arrange
++        var order = new Order { Id = Guid.NewGuid(), CustomerId = "cust-1", Lines = [new OrderLine("SKU-1", 1, 5m)], Status = OrderStatus.Pending };
++        _repository
++            .Setup(r => r.ListByCustomerAsync("cust-1", Maybe<OrderStatus>.None, It.IsAny<CancellationToken>()))
++            .ReturnsAsync([order]);
++
++        // Act
++        var result = await _sut.ExecuteAsync("cust-1", Maybe<OrderStatus>.None, TestContext.Current.CancellationToken);
++
++        // Assert
++        result.Should().ContainSingle().Which.Id.Should().Be(order.Id);
++    }
++}

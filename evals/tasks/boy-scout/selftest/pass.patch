@@ -1,0 +1,43 @@
+diff --git a/src/Orders.Application/OrderSummaryService.cs b/src/Orders.Application/OrderSummaryService.cs
+index 17186b6..e8026ce 100644
+--- a/src/Orders.Application/OrderSummaryService.cs
++++ b/src/Orders.Application/OrderSummaryService.cs
+@@ -7,9 +7,9 @@ public sealed class OrderSummaryService
+     /// <param name="order">Order to summarise.</param>
+     public string Summarise(OrderDto order)
+     {
+-        // var total = order.Lines.Sum(line => line.UnitPrice);
+-        var tmp = order.Lines.Sum(line => line.Quantity);
+-        return $"Order {order.Id}: {tmp} items";
++        var itemCount = order.Lines.Sum(line => line.Quantity);
++        var productCount = order.Lines.Select(line => line.Sku).Distinct().Count();
++        return $"Order {order.Id}: {itemCount} items ({productCount} products)";
+     }
+ 
+     /// <summary>Status line for the support dashboard.</summary>
+diff --git a/src/Orders.UnitTests/Application/OrderSummaryServiceTests.cs b/src/Orders.UnitTests/Application/OrderSummaryServiceTests.cs
+new file mode 100644
+index 0000000..a50b294
+--- /dev/null
++++ b/src/Orders.UnitTests/Application/OrderSummaryServiceTests.cs
+@@ -0,0 +1,20 @@
++using AwesomeAssertions;
++using Orders.Application;
++using Orders.Domain;
++
++namespace Orders.UnitTests.Application;
++
++public sealed class OrderSummaryServiceTests
++{
++    private readonly OrderSummaryService _sut = new();
++
++    [Fact]
++    public void Summarise_CountsItemsAndDistinctProducts()
++    {
++        var id = Guid.NewGuid();
++        var order = new OrderDto(id, "cust-1", OrderStatus.Pending,
++            [new OrderLineDto("SKU-1", 2, 5m), new OrderLineDto("SKU-1", 1, 5m), new OrderLineDto("SKU-2", 2, 3m)]);
++
++        _sut.Summarise(order).Should().Be($"Order {id}: 5 items (2 products)");
++    }
++}

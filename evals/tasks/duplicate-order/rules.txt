@@ -1,0 +1,2 @@
+hexagonal-architecture.md: Errors crossing a boundary are translated (DbUpdateException → application error), not leaked upward
+dotnet-functional.md: Translate exceptions from adapters into a Result failure at the boundary; compose with Match
