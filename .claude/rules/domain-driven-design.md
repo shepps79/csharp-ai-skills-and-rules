@@ -1,11 +1,11 @@
 ---
-description: Language-agnostic Domain-Driven Design principles for modeling complex systems with explicit boundaries
+description: C# / .NET Domain-Driven Design principles for modeling complex systems with explicit boundaries
 globs: 
 alwaysApply: false
 ---
 # Domain Driven Design Principles
 
-*Cursor rules file – language-agnostic DDD guidelines for complex software systems.*
+*Cursor rules file – C# / .NET DDD guidelines for complex software systems.*
 
 > **Intent**  
 > Establish a **common language** between developers and domain experts.  
@@ -32,7 +32,7 @@ alwaysApply: false
 * Define explicit boundaries around models where terms and concepts have consistent meaning
 * Each context maintains its own ubiquitous language and model
 * A large system will typically have multiple bounded contexts
-* Organize code structure to reflect these boundaries (e.g., separate modules or packages)
+* Organize code structure to reflect these boundaries (e.g., separate projects or namespaces)
 
 ### 2.2 Context Mapping
 
@@ -63,7 +63,7 @@ Document relationships between bounded contexts with specific patterns:
 
 #### Value Objects
 
-* Immutable objects defined by their attributes, without identity
+* Immutable objects defined by their attributes, without identity (`record` / `readonly record struct`)
 * Examples: Money, Color, Address, DateRange
 * Two value objects with the same properties are considered equal
 * Designed to be passed by value, not reference
@@ -119,7 +119,7 @@ Document relationships between bounded contexts with specific patterns:
 * Can be composed using boolean logic (and, or, not)
 * Used for validation, selection, and creation of objects
 * Express business rules in a clear, reusable way
-* Can be used in-memory or translated to database queries
+* Can be used in-memory or translated to database queries (e.g. `Expression<Func<T, bool>>` with EF Core)
 
 ---
 
