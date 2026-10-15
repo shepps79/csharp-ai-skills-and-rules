@@ -151,6 +151,52 @@ module.exports = {
     return result(used, used ? 'ok' : 'no AddStandardResilienceHandler (or AddResilienceHandler) on the HTTP client');
   },
 
+  // testing.md: Moq mocks only outbound ports (interfaces declared in Application), never concrete classes, loggers,
+  // HttpClient or domain types.
+  mocksOnlyPorts: (_, context) => {
+    const ports = applicationInterfaces(context.metadata.runDir);
+    const wrong = testSources(context).flatMap(({ file, code }) => [...code.matchAll(/\bMock<\s*([\w.]+)/g)]
+      .map((m) => m[1].split('.').pop())
+      .filter((type) => !ports.includes(type))
+      .map((type) => `Mock<${type}> in ${file}`));
+    return result(wrong.length === 0, wrong.length ? `mocks something that isn't a port: ${[...new Set(wrong)].join('; ')}` : 'ok');
+  },
+
+  // testing.md: don't assert on logging at all.
+  noLoggerAssertions: (_, context) =>
+    noMatches(context, (file) => isCSharp(file) && isTestFile(file), /\bLogLevel\.\w+|FakeLogCollector|\.LatestRecord\b/,
+      'test asserts on logging'),
+
+  // testing.md: no if/for/foreach/while/switch statements inside test methods (helpers after them are fine).
+  noLogicInTests: (_, context) => {
+    const hits = testSources(context).filter(({ code }) => testMethodBodies(code).some((body) =>
+      /\b(if|for|foreach|while|switch)\s*\(/.test(body)));
+    return result(hits.length === 0, hits.length ? `logic in a test method: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  // Prefer the real adapter over a mock when one exists and the test can observe it: `config.prefer` maps
+  // port to adapter, e.g. { IOrderRepository: InMemoryOrderRepository }.
+  preferRealCollaborators: (_, context) => {
+    const mocked = Object.entries(context.config.prefer).flatMap(([port, adapter]) => testSources(context)
+      .filter(({ code }) => new RegExp(`\\bMock<\\s*${port}\\s*>`).test(code))
+      .map(({ file }) => `${file} mocks ${port}; use ${adapter}`));
+    return result(mocked.length === 0, mocked.length ? mocked.join('; ') : 'ok');
+  },
+
+  // Endpoint tests go through the real host and composition root: WebApplicationFactory<Program> hitting the route,
+  // with no registrations swapped out (the orders fixture needs none).
+  endpointTestsThroughHost: (_, context) => {
+    const tests = testSources(context);
+    const route = new RegExp(context.config.route);
+    const throughHost = tests.some(({ code }) => /WebApplicationFactory<\s*Program\s*>/.test(code) && route.test(code));
+    const swapped = tests.filter(({ code }) => /ConfigureTestServices|RemoveAll<|\.Replace\(/.test(code));
+    const problems = [
+      ...(throughHost ? [] : [`no WebApplicationFactory<Program> test calling ${context.config.route}`]),
+      ...swapped.map(({ file }) => `${file} replaces the app's registrations`),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
+  },
+
   // Repo skills (.claude/skills) the task should load; other skills may load too.
   skillsUsed: (_, { metadata, config }) => {
     const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
@@ -254,10 +300,35 @@ function noExceptionFlow(context, layer, pattern, problem) {
   return result(hits.length === 0, hits.length ? `${problem}: ${hits.join(', ')}` : 'ok');
 }
 
-function productionSources({ metadata }) {
+function productionSources(context) {
+  return sources(context, (file) => isCSharp(file) && !isTestFile(file));
+}
+
+function testSources(context) {
+  return sources(context, (file) => isCSharp(file) && isTestFile(file));
+}
+
+function sources({ metadata }, include) {
   return metadata.changedFiles
-    .filter((file) => isCSharp(file) && !isTestFile(file) && fs.existsSync(path.join(metadata.runDir, file)))
+    .filter((file) => include(file) && fs.existsSync(path.join(metadata.runDir, file)))
     .map((file) => ({ file, code: stripComments(read(metadata, file)) }));
+}
+
+// Every interface declared in an *.Application project of the run dir: the outbound ports.
+function applicationInterfaces(runDir) {
+  return fs.readdirSync(runDir, { recursive: true })
+    .filter((file) => /\.Application\//.test(file) && file.endsWith('.cs') && !/\/(bin|obj)\//.test(file))
+    .flatMap((file) => [...fs.readFileSync(path.join(runDir, file), 'utf8').matchAll(/\binterface\s+(\w+)/g)].map((m) => m[1]));
+}
+
+// From each [Fact]/[Theory] method's signature to the next member declaration.
+function testMethodBodies(code) {
+  const member = /\b(?:public|private|protected|internal)\s/;
+  return code.split(/\[(?:Fact|Theory)\b/).slice(1).map((segment) => {
+    const method = segment.slice(segment.search(member) + 1);
+    const end = method.search(new RegExp(`\\n\\s*${member.source}`));
+    return end === -1 ? method : method.slice(0, end);
+  });
 }
 
 function noMatches(context, include, pattern, problem) {

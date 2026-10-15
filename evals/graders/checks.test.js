@@ -178,3 +178,41 @@ test('httpResilience requires a resilience handler on the client', () => {
   assert.equal(passes('httpResilience', registrations('services.AddHttpClient<G>().AddStandardResilienceHandler();')), true);
   assert.equal(passes('httpResilience', registrations('services.AddHttpClient<G>(); // AddStandardResilienceHandler()')), false);
 });
+
+test('mocksOnlyPorts allows Application interfaces only', () => {
+  const port = { 'src/X.Application/IOrderRepository.cs': 'public interface IOrderRepository;' };
+  const tests = (code) => ({ ...port, 'src/X.UnitTests/STests.cs': code });
+  assert.equal(passes('mocksOnlyPorts', tests('private readonly Mock<IOrderRepository> _repository = new();')), true);
+  assert.equal(passes('mocksOnlyPorts', tests('var logger = new Mock<ILogger<OrderService>>();')), false);
+  assert.equal(passes('mocksOnlyPorts', tests('var order = new Mock<Order>();')), false);
+});
+
+test('noLoggerAssertions catches assertions on log output', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/STests.cs': code });
+  assert.equal(passes('noLoggerAssertions', tests('collector.LatestRecord.Level.Should().Be(LogLevel.Warning);')), false);
+  assert.equal(passes('noLoggerAssertions', tests('var sut = new S(NullLogger<S>.Instance);')), true);
+});
+
+test('noLogicInTests catches control flow in test methods, not in helpers after them', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/STests.cs': code });
+  const helper = '\n    private static Order[] Orders(int n)\n    {\n        for (var i = 0; i < n; i++) { }\n    }\n';
+  const theory = '[Theory]\n    [InlineData(1)]\n    public void A_B_C(int n)\n    {\n        if (n > 0) { }\n    }\n';
+  assert.equal(passes('noLogicInTests', tests(theory)), false);
+  assert.equal(passes('noLogicInTests', tests(`[Fact]\n    public void A_B()\n    {\n        sut.Do().Should().BeTrue();\n    }\n${helper}`)), true);
+});
+
+test('preferRealCollaborators fails a mock of a port that has a usable real adapter', () => {
+  const config = { prefer: { IOrderRepository: 'InMemoryOrderRepository' } };
+  const tests = (code) => ({ 'src/X.UnitTests/STests.cs': code });
+  assert.equal(passes('preferRealCollaborators', tests('new Mock<IOrderRepository>()'), {}, config), false);
+  assert.equal(passes('preferRealCollaborators', tests('new OrderService(new InMemoryOrderRepository())'), {}, config), true);
+});
+
+test('endpointTestsThroughHost requires the real host and composition root', () => {
+  const config = { route: '/orders/' };
+  const tests = (code) => ({ 'src/X.IntegrationTests/Api/OrderEndpointsTests.cs': code });
+  const host = 'IClassFixture<WebApplicationFactory<Program>>\n_client.GetAsync($"/orders/{id}")';
+  assert.equal(passes('endpointTestsThroughHost', tests(host), {}, config), true);
+  assert.equal(passes('endpointTestsThroughHost', tests(`${host}\nbuilder.ConfigureTestServices(s => s.RemoveAll<IOrderRepository>())`), {}, config), false);
+  assert.equal(passes('endpointTestsThroughHost', tests('var sut = new OrderService(repository);'), {}, config), false);
+});
