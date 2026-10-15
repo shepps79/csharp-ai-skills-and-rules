@@ -7,14 +7,14 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and eleven tasks: `find-order` (null trap), `place-order-tests`
-  (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and twelve tasks: `find-order` (null trap), `place-order-tests`
+  (mocks vs TestContainers conflict), `summary-tests` (tautological-test trap, planted mutants), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
   mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
   hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the
   rules should lead to `TimeProvider`), `customer-name` (typed `HttpClient`, hidden HTTP acceptance tests),
   `get-order-endpoint` (test wiring through the real host, real collaborators over mocks), `greenfield-inventory`
   (new service).
-- 35 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- 37 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
   contract tests for `order-limits`, `customer-name` and `get-order-endpoint`. The `customer-name` tests stub every `IHttpClientFactory`
   client's primary handler, so code that creates its own `HttpClient` fails them.
@@ -29,8 +29,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 11 tasks × 2 variants × 5 = 110 agent
-   runs; at the last baseline's cost per run, roughly $21 and 1–1.5 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 12 tasks × 2 variants × 5 = 120 agent
+   runs; at the last baseline's cost per run, roughly $23 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
    `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
@@ -87,6 +87,12 @@ These are measured, not fixed; they are inputs for the next round of rule change
   says to integration-test adapters against TestContainers, which a third-party HTTP service doesn't have (WireMock.Net
   is the usual stand-in), while `testing.md` says Moq mocks only ports. Agents improvise: mocked `HttpClient`, real
   network calls, or no adapter tests at all.
+- No rule says expected values must be worked out independently of the code under test, and the rules push the other
+  way: `clean-code.md` and `simple-design.md` demand strict DRY ("every formula lives in exactly one place") and test
+  code as clean as production code, so agents reuse the production mapper or formula as the oracle. `testing.md`'s
+  examples stub `(Order?)null` and assert `BeNull()`, and assert `CustomerId` against the value just arranged. Before
+  this check existed, 11 of 42 runs with tests asserted `Should().Be(OrderSummary.From(order))`. Measured by
+  `independentExpectations` on every task and `killsPlantedMutants` on `summary-tests`.
 - `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
 
 ## Compiler-enforced rules
