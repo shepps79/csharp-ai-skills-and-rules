@@ -38,6 +38,18 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 9. **Cost and effort metrics.** Surface `metadata.agent.turns`, tokens and cost per variant; a rule change
    with the same quality at lower cost counts as a win.
 
+## Compiler-enforced rules
+
+`templates/dotnet/.editorconfig` + `Directory.Build.props` turn the checkable parts of `.claude/rules` into build
+errors; copy both into any .NET repo. Known gaps, still prose-only:
+
+- Member ordering (`dotnet.md`): no built-in analyzer. StyleCop.Analyzers SA1201/SA1202/SA1204 would cover it.
+- `String` vs `string` (IDE0049): configured, but not reported at build by SDK 10.0.301; editor only.
+- Function length, parameter count, nesting depth, commented-out code, LINQ over loops, sealed *public* classes,
+  `InternalsVisibleTo`, `async void`, `.Result`/`.Wait()`: no built-in analyzer (Sonar or VS Threading analyzers
+  cover some). The `sealedTestClasses`, `noInternalsVisibleTo` and similar eval checks cover a few of these.
+- The rules themselves don't yet tell the agent to use the template; worth adding to `dotnet.md`.
+
 ## Things to keep in mind
 
 - The rubrics in `promptfooconfig.yaml` are the yardstick. Change them in a separate commit from rule changes,
