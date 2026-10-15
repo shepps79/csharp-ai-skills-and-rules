@@ -1,0 +1,26 @@
+diff --git a/src/Orders.Application/AssemblyInfo.cs b/src/Orders.Application/AssemblyInfo.cs
+new file mode 100644
+index 0000000..5600908
+--- /dev/null
++++ b/src/Orders.Application/AssemblyInfo.cs
+@@ -0,0 +1,3 @@
++using System.Runtime.CompilerServices;
++
++[assembly: InternalsVisibleTo("Orders.UnitTests")]
+diff --git a/src/Orders.UnitTests/Application/OrderNumberFormatterTests.cs b/src/Orders.UnitTests/Application/OrderNumberFormatterTests.cs
+new file mode 100644
+index 0000000..131d408
+--- /dev/null
++++ b/src/Orders.UnitTests/Application/OrderNumberFormatterTests.cs
+@@ -0,0 +1,11 @@
++using AwesomeAssertions;
++using Orders.Application;
++
++namespace Orders.UnitTests.Application;
++
++public sealed class OrderNumberFormatterTests
++{
++    [Fact]
++    public void Format_ReturnsOrdPrefix() =>
++        OrderNumberFormatter.Format(Guid.Parse("0123abcd-0000-0000-0000-000000000000")).Should().Be("ORD-0123ABCD");
++}

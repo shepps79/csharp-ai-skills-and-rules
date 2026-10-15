@@ -1,0 +1,56 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..1922bbb 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
+ builder.Services.AddDbContext<OrdersDbContext>(options =>
+     options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
++builder.Services.Configure<OrderSettings>(builder.Configuration.GetSection("Orders"));
+ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+ var app = builder.Build();
+diff --git a/src/Orders.Application/OrderSettings.cs b/src/Orders.Application/OrderSettings.cs
+new file mode 100644
+index 0000000..05434fd
+--- /dev/null
++++ b/src/Orders.Application/OrderSettings.cs
+@@ -0,0 +1,6 @@
++namespace Orders.Application;
++
++public class OrderSettings
++{
++    public int MaxLines { get; set; } = 50;
++}
+diff --git a/src/Orders.Application/PlaceOrderUseCase.cs b/src/Orders.Application/PlaceOrderUseCase.cs
+index 6caa1d1..20bee9e 100644
+--- a/src/Orders.Application/PlaceOrderUseCase.cs
++++ b/src/Orders.Application/PlaceOrderUseCase.cs
+@@ -1,17 +1,25 @@
+ using CSharpFunctionalExtensions;
++using Microsoft.Extensions.Options;
+ using Orders.Domain;
+ 
+ namespace Orders.Application;
+ 
+ /// <summary>Places a new order for a customer.</summary>
+ /// <param name="repository">Where placed orders are stored.</param>
+-public sealed class PlaceOrderUseCase(IOrderRepository repository)
++public sealed class PlaceOrderUseCase(IOrderRepository repository, IOptions<OrderSettings> settings)
+ {
+     /// <summary>Validates and stores the order.</summary>
+     /// <param name="request">Order to place.</param>
+     /// <param name="cancellationToken">Cancels the operation.</param>
+     /// <returns>The placed order, or the validation errors.</returns>
+-    public Task<Result<OrderDto>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken) =>
++    public Task<Result<OrderDto>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken)
++    {
++        if (request.Lines.Count > settings.Value.MaxLines)
++        {
++            throw new InvalidOperationException("Too many lines.");
++        }
++
++        return
+         Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))])
+             .Tap(order => repository.AddAsync(order, cancellationToken))
+             .Map(OrderDto.From);

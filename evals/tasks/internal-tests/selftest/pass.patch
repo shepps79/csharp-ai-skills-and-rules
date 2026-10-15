@@ -1,0 +1,24 @@
+diff --git a/src/Orders.UnitTests/Application/OrderDtoTests.cs b/src/Orders.UnitTests/Application/OrderDtoTests.cs
+new file mode 100644
+index 0000000..24df68e
+--- /dev/null
++++ b/src/Orders.UnitTests/Application/OrderDtoTests.cs
+@@ -0,0 +1,18 @@
++using AwesomeAssertions;
++using Orders.Application;
++using Orders.Domain;
++
++namespace Orders.UnitTests.Application;
++
++public sealed class OrderDtoTests
++{
++    [Theory]
++    [InlineData("0123abcd-0000-0000-0000-000000000000", "ORD-0123ABCD")]
++    [InlineData("ffffffff-1111-2222-3333-444444444444", "ORD-FFFFFFFF")]
++    public void Number_IsOrdPrefixAndFirstEightHexDigits(string id, string expected)
++    {
++        var order = new Order { Id = Guid.Parse(id), CustomerId = "cust-1", Lines = [new OrderLine("SKU-1", 1, 5m)], Status = OrderStatus.Pending };
++
++        OrderDto.From(order).Number.Should().Be(expected);
++    }
++}

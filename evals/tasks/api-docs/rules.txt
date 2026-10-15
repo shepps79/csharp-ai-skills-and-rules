@@ -1,0 +1,1 @@
+dotnet.md: General Principles — prefer built-in solutions over custom ones, e.g. the built-in OpenAPI support, not Swashbuckle

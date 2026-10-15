@@ -1,0 +1,30 @@
+diff --git a/src/Orders.UnitTests/Application/GetOrderUseCaseTests.cs b/src/Orders.UnitTests/Application/GetOrderUseCaseTests.cs
+new file mode 100644
+index 0000000..a90c6c4
+--- /dev/null
++++ b/src/Orders.UnitTests/Application/GetOrderUseCaseTests.cs
+@@ -0,0 +1,24 @@
++using Moq;
++using Orders.Application;
++using Orders.Domain;
++
++namespace Orders.UnitTests.Application;
++
++public class GetOrderUseCaseTests
++{
++    // ---------- GetOrder ----------
++
++    [Fact]
++    public async Task TestGetOrder()
++    {
++        var repository = new Mock<IOrderRepository>();
++        var sut = new GetOrderUseCase(repository.Object);
++
++        var result = await sut.ExecuteAsync(Guid.NewGuid(), CancellationToken.None);
++
++        if (result.HasValue)
++        {
++            Assert.Fail("expected no order");
++        }
++    }
++}

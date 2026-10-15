@@ -1,0 +1,4 @@
+dotnet.md: DI and Configuration — Options pattern; ValidateDataAnnotations().ValidateOnStart() when the options use data annotations; register in a composition-root extension on IHostApplicationBuilder
+hexagonal-architecture.md: composition root is the only place for service lookups; no framework imports in Domain
+dotnet-functional.md: Model failure with Result, not exceptions (rejecting an over-limit order is an expected failure)
+fixture tension: the fixture keeps registrations inline in Program.cs (hexagonal allows Program.cs as the composition root; dotnet.md wants IHostApplicationBuilder extensions) — this task measures which wins

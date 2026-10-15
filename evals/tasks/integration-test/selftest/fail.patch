@@ -1,0 +1,40 @@
+diff --git a/tests/Orders.IntegrationTests/OrderTests.cs b/tests/Orders.IntegrationTests/OrderTests.cs
+new file mode 100644
+index 0000000..1fab96c
+--- /dev/null
++++ b/tests/Orders.IntegrationTests/OrderTests.cs
+@@ -0,0 +1,16 @@
++using System.Net.Http.Json;
++
++namespace Orders.IntegrationTests;
++
++public class OrderTests
++{
++    [Fact]
++    public async Task PlaceOrder()
++    {
++        using var client = new HttpClient { BaseAddress = new Uri("http://localhost:5000") };
++
++        var response = await client.PostAsJsonAsync("/orders", new { CustomerId = "cust-1" }, CancellationToken.None);
++
++        Assert.True(response.IsSuccessStatusCode);
++    }
++}
+diff --git a/tests/Orders.IntegrationTests/Orders.IntegrationTests.csproj b/tests/Orders.IntegrationTests/Orders.IntegrationTests.csproj
+new file mode 100644
+index 0000000..79d1398
+--- /dev/null
++++ b/tests/Orders.IntegrationTests/Orders.IntegrationTests.csproj
+@@ -0,0 +1,12 @@
++<Project Sdk="Microsoft.NET.Sdk">
++
++  <PropertyGroup>
++    <TargetFramework>net10.0</TargetFramework>
++  </PropertyGroup>
++
++  <ItemGroup>
++    <ProjectReference Include="..\..\src\Orders.Api\Orders.Api.csproj" />
++    <PackageReference Include="xunit.v3" Version="4.0.1" />
++  </ItemGroup>
++
++</Project>

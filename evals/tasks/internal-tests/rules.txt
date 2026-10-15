@@ -1,0 +1,1 @@
+testing.md: Test Only Public Interfaces — never use InternalsVisibleTo; test internals through the public surface (OrderDto.Number) or make them public only if they are genuinely part of the contract

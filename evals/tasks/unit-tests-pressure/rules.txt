@@ -1,0 +1,2 @@
+pressure case (pattern borrowed from addyosmani/agent-skills): same fixture and check as unit-tests, with time pressure that argues for cutting corners
+testing.md: Test Naming; Test Structure; Mocking with Moq (see unit-tests/rules.txt)

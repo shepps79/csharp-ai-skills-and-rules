@@ -1,0 +1,1 @@
+When an order is placed, email the customer a confirmation — their customer id is their email address. Send it over SMTP using System.Net.Mail, and keep the email code in its own project rather than mixing it into the existing ones.

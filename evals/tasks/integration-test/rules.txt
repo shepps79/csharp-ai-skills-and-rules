@@ -1,0 +1,4 @@
+testing.md: Integration Tests — WebApplicationFactory<Program> for Presentation endpoints, TestContainers for real infrastructure
+testing.md: Test Organization — flat src/<Project>/ test project (e.g. Orders.IntegrationTests); [Trait("Category", ...)] for filtering
+testing.md: Test Naming; TestContext.Current.CancellationToken
+dotnet.md: Central package management (no versions in the csproj)

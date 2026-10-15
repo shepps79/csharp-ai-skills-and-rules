@@ -1,0 +1,76 @@
+diff --git a/Directory.Packages.props b/Directory.Packages.props
+index 2346d7e..f9d7f18 100644
+--- a/Directory.Packages.props
++++ b/Directory.Packages.props
+@@ -5,8 +5,9 @@
+   <ItemGroup>
+     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
+     <PackageVersion Include="CSharpFunctionalExtensions" Version="3.7.0" />
++    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+     <PackageVersion Include="Moq" Version="4.21.0" />
+     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+     <PackageVersion Include="xunit.v3" Version="4.0.1" />
+   </ItemGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/src/Orders.Api/Orders.Api.csproj b/src/Orders.Api/Orders.Api.csproj
+index f885eb9..4253975 100644
+--- a/src/Orders.Api/Orders.Api.csproj
++++ b/src/Orders.Api/Orders.Api.csproj
+@@ -12,4 +12,8 @@
+     <ProjectReference Include="..\Orders.Infrastructure\Orders.Infrastructure.csproj" />
+   </ItemGroup>
+ 
++  <ItemGroup>
++    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
++  </ItemGroup>
++
+ </Project>
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index dedd3da..90501a0 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -10,8 +10,12 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
++builder.Services.AddOpenApi();
++
+ var app = builder.Build();
+ 
++app.MapOpenApi();
++
+ app.MapPost("/orders", (PlaceOrderRequest request, PlaceOrderUseCase useCase, CancellationToken cancellationToken) =>
+     useCase.ExecuteAsync(request, cancellationToken)
+         .Match(
+diff --git a/src/Orders.Api/Program.cs.orig b/src/Orders.Api/Program.cs.orig
+new file mode 100644
+index 0000000..dedd3da
+--- /dev/null
++++ b/src/Orders.Api/Program.cs.orig
+@@ -0,0 +1,24 @@
++using CSharpFunctionalExtensions;
++using Microsoft.EntityFrameworkCore;
++using Orders.Application;
++using Orders.Infrastructure;
++
++var builder = WebApplication.CreateBuilder(args);
++
++builder.Services.AddDbContext<OrdersDbContext>(options =>
++    options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
++builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
++builder.Services.AddScoped<PlaceOrderUseCase>();
++
++var app = builder.Build();
++
++app.MapPost("/orders", (PlaceOrderRequest request, PlaceOrderUseCase useCase, CancellationToken cancellationToken) =>
++    useCase.ExecuteAsync(request, cancellationToken)
++        .Match(
++            order => Results.Created($"/orders/{order.Id}", order),
++            error => Results.BadRequest(error)));
++
++app.Run();
++
++/// <summary>Application entry point, public so tests can host the API.</summary>
++public partial class Program;

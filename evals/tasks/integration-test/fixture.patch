@@ -1,0 +1,23 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..dedd3da 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -1,3 +1,4 @@
++using CSharpFunctionalExtensions;
+ using Microsoft.EntityFrameworkCore;
+ using Orders.Application;
+ using Orders.Infrastructure;
+@@ -11,4 +12,13 @@ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapPost("/orders", (PlaceOrderRequest request, PlaceOrderUseCase useCase, CancellationToken cancellationToken) =>
++    useCase.ExecuteAsync(request, cancellationToken)
++        .Match(
++            order => Results.Created($"/orders/{order.Id}", order),
++            error => Results.BadRequest(error)));
++
+ app.Run();
++
++/// <summary>Application entry point, public so tests can host the API.</summary>
++public partial class Program;

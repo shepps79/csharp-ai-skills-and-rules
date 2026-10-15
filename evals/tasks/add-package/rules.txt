@@ -1,0 +1,4 @@
+dotnet.md: Central package management — versions only in Directory.Packages.props
+dotnet.md: Use `dotnet add` for package management, not manual edits
+dotnet.md: Commit package additions/removals separately from code changes
+conventional commits: (none yet as a rule — AGENTS.md no longer has it; the .claude/skills/commit skill covers it)
