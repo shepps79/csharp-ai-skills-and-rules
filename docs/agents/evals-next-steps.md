@@ -7,17 +7,16 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`.
-- One fixture (`fixtures/orders`) and three tasks: `find-order` (null trap), `place-order-tests`
-  (mocks vs TestContainers conflict), `cancel-order` (realistic feature).
-- 11 deterministic checks in `evals/graders/checks.js`, plus one `llm-rubric` per task.
-- Smoke run passed end to end (one task, `rules@HEAD`, before the agent model switched to Sonnet).
-- No baseline recorded yet.
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and four tasks: `find-order` (null trap), `place-order-tests`
+  (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `greenfield-inventory` (new service).
+- `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
+- 16 deterministic checks in `evals/graders/checks.js`, plus one `llm-rubric` per task.
+- Baseline `eval-ucp-2026-10-15T10:15:40` (3 tasks, before greenfield): all checks pass none 7%, env 27%,
+  rules 93–100%. Identical HEAD/WORKTREE runs differed by 7 points, which is the noise floor at 15 runs.
 
 ## Next steps, in order
 
-1. **Record a baseline.** `npm run eval-baseline -- --repeat 5` from `evals/`. Note the
-   fingerprint hash and the per-metric pass rate for each variant. `none` against `env` shows what your
-   global setup adds; `env` against `rules@HEAD` shows what the repo rules add.
+1. **Re-record the baseline** with the greenfield task included: `npm run eval-baseline -- --repeat 5`.
 2. **Ablation.** Add a provider option that drops one rule file (e.g. `config.excludeRules: [testing.md]`)
    and run each file out in turn. Files whose removal changes nothing are dead weight or ignored.
 3. **Rule-conflict tasks.** Add a task per known contradiction:
@@ -43,6 +42,7 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 
 - The rubrics in `promptfooconfig.yaml` are the yardstick. Change them in a separate commit from rule changes,
   and re-run the baseline after.
-- Single runs are noisy. Use `--repeat 5` or more; differences under about 15 points are noise at that size.
+- Single runs are noisy. Use `--repeat 5` or more; differences under about 7–15 points are noise at that size,
+  and repeats often produce byte-identical code, so confirm a gain with a second eval.
 - The global setup (RTK, ponytail, CLAUDE.md) is deliberately part of the `env` and `rules@*` variants.
   If it changes, the fingerprint changes and the baseline must be re-run.
