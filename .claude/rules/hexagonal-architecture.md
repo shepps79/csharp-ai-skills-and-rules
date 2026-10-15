@@ -7,7 +7,7 @@ Hexagonal architecture (Ports and Adapters) keeps business logic independent fro
 ## Layers
 
 - **Domain**: Entities, value objects, domain services, domain events. Pure C#, no framework/NuGet infra references (no EFCore, no ASP.NET, no HTTP clients).
-- **Application**: Use cases that orchestrate domain logic via ports. Defines inbound and outbound port interfaces (`I...Port` or `I...UseCase` / `I...Repository`). May depend on Domain only.
+- **Application**: Use cases that orchestrate domain logic via ports. Defines the inbound port (use-case services) and outbound port interfaces (`I...Repository`, `I...Gateway`). May depend on Domain only.
 - **Infrastructure**: Implements outbound ports (EFCore repositories, HTTP gateways, message bus publishers, `IClock`, etc.). Depends on Application (for port interfaces) and Domain.
 - **Presentation**: Implements inbound adapters (minimal API endpoints/controllers). Depends on Application (for use cases/DTOs), not on Infrastructure or Domain internals directly.
 
@@ -23,7 +23,7 @@ Adapters (Infrastructure, Presentation) → Application → Domain → nothing e
 
 ## Ports & Adapters
 
-- **Inbound ports**: Interfaces in Application describing use cases (e.g. `ICreateTaskUseCase`), taking/returning DTOs, not domain entities across the boundary when the DTO shape differs.
+- **Inbound ports**: The public methods of a `sealed` use-case service in Application (e.g. `OrderService.PlaceOrderAsync`), taking and returning DTOs, not domain entities. Don't wrap the service in an `I...UseCase` interface: inbound adapters are tested against the real service, so the interface would have one implementation (see "Ports earn their place" below). Add one only when a second implementation genuinely exists.
 - **Outbound ports**: Interfaces in Application describing dependencies the use case needs (e.g. `ITaskRepository`, `IClock`). Model capabilities, not technologies — `ITaskRepository`, not `IEfCoreTaskRepository`.
 - **Adapters**: Concrete implementations of ports, living in Infrastructure (outbound: EFCore repository, external gateway) or Presentation (inbound: minimal API endpoint mapping HTTP request → use-case input).
 - Mapping between wire/DB shapes and domain/application DTOs happens in the adapter, never inside the use case.
