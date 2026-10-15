@@ -129,6 +129,28 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : `TimeProvider in ${uses.join(', ')}`);
   },
 
+  // Microsoft's HttpClient guidance: typed clients from IHttpClientFactory (AddHttpClient<TClient>), no `new HttpClient`
+  // (socket exhaustion, stale DNS), and no second registration of the typed client, which replaces the configured one.
+  typedHttpClient: (_, context) => {
+    const sources = productionSources(context);
+    const all = sources.map(({ code }) => code).join('\n');
+    const typedClients = [...all.matchAll(/AddHttpClient<\s*(\w+)(?:\s*,\s*(\w+))?\s*>/g)].flatMap((m) => m.slice(1)).filter(Boolean);
+    const problems = [
+      ...(typedClients.length ? [] : ['no typed client registered with AddHttpClient<TClient>']),
+      ...sources.filter(({ code }) => /new\s+HttpClient\s*\(/.test(code)).map(({ file }) => `new HttpClient in ${file}`),
+      ...sources.filter(({ code }) => /\.CreateClient\s*\(/.test(code)).map(({ file }) => `IHttpClientFactory.CreateClient in ${file}`),
+      ...typedClients.filter((name) => new RegExp(`Add(Singleton|Scoped|Transient)<[^>]*\\b${name}\\b`).test(all))
+        .map((name) => `${name} registered again outside AddHttpClient`),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : `typed clients: ${typedClients.join(', ')}`);
+  },
+
+  // Microsoft's current guidance for outbound HTTP: the Microsoft.Extensions.Http.Resilience pipeline.
+  httpResilience: (_, context) => {
+    const used = productionSources(context).some(({ code }) => /\.Add(Standard)?ResilienceHandler\s*\(/.test(code));
+    return result(used, used ? 'ok' : 'no AddStandardResilienceHandler (or AddResilienceHandler) on the HTTP client');
+  },
+
   // Repo skills (.claude/skills) the task should load; other skills may load too.
   skillsUsed: (_, { metadata, config }) => {
     const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
@@ -230,6 +252,12 @@ function noExceptionFlow(context, layer, pattern, problem) {
     .filter((file) => isCSharp(file) && file.includes(`.${layer}/`))
     .filter((file) => pattern.test(stripComments(read(context.metadata, file)).replace(DISCARD_ARM_THROW, '')));
   return result(hits.length === 0, hits.length ? `${problem}: ${hits.join(', ')}` : 'ok');
+}
+
+function productionSources({ metadata }) {
+  return metadata.changedFiles
+    .filter((file) => isCSharp(file) && !isTestFile(file) && fs.existsSync(path.join(metadata.runDir, file)))
+    .map((file) => ({ file, code: stripComments(read(metadata, file)) }));
 }
 
 function noMatches(context, include, pattern, problem) {

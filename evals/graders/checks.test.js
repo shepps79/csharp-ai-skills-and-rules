@@ -163,3 +163,18 @@ test('usesTimeProvider requires the built-in TimeProvider, not a custom clock po
   assert.equal(passes('usesTimeProvider', { ...service, 'src/X.Application/IClock.cs': 'public interface IClock;' }), false);
   assert.equal(passes('usesTimeProvider', { 'src/X.Application/S.cs': 'public sealed class S(ITimeProvider clock);' }), false);
 });
+
+test('typedHttpClient requires a typed client and rejects the HttpClient anti-patterns', () => {
+  const registrations = (code) => ({ 'src/X.Api/Configuration/Registrations.cs': code });
+  const typed = 'services.AddHttpClient<ICustomerDirectory, HttpCustomerDirectory>(c => c.BaseAddress = uri);';
+  assert.equal(passes('typedHttpClient', registrations(typed)), true);
+  assert.equal(passes('typedHttpClient', registrations(`${typed}\nservices.AddTransient<ICustomerDirectory, HttpCustomerDirectory>();`)), false);
+  assert.equal(passes('typedHttpClient', { ...registrations(typed), 'src/X.Infrastructure/G.cs': 'var c = new HttpClient();' }), false);
+  assert.equal(passes('typedHttpClient', registrations('services.AddHttpClient("customers");\nfactory.CreateClient("customers");')), false);
+});
+
+test('httpResilience requires a resilience handler on the client', () => {
+  const registrations = (code) => ({ 'src/X.Api/Configuration/Registrations.cs': code });
+  assert.equal(passes('httpResilience', registrations('services.AddHttpClient<G>().AddStandardResilienceHandler();')), true);
+  assert.equal(passes('httpResilience', registrations('services.AddHttpClient<G>(); // AddStandardResilienceHandler()')), false);
+});
