@@ -100,3 +100,10 @@ test('coverage scores changed production files, or everything for a tests-only c
   assert.equal(passes('coverage', { 'src/X.UnitTests/STests.cs': '[Fact]' }, coverage(files)), true);
   assert.equal(passes('coverage', service, { dotnet: { coverage: null } }), false);
 });
+
+test('acceptance fails when the hidden tests fail and when the build failed', () => {
+  const dotnet = (fields) => ({ dotnet: { buildOk: true, ...fields } });
+  assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: false, passed: 4, failed: 1, log: '' } })), false);
+  assert.equal(passes('acceptance', {}, dotnet({ buildOk: false, acceptance: null })), false);
+  assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: true, passed: 5, failed: 0, log: '' } })), true);
+});

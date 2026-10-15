@@ -48,7 +48,7 @@ class ClaudeCodeProvider {
       metadata: {
         runDir,
         changedFiles,
-        dotnet: buildAndTest(runDir),
+        dotnet: buildAndTest(runDir, [context.vars.fixture, context.vars.acceptance]),
         agent: summariseTranscript(events, result),
         fingerprint: fingerprint(events, this.config),
       },
@@ -131,10 +131,11 @@ function stageAndListChanges(runDir) {
   return git(runDir, 'diff', '--cached', '--name-only', '--diff-filter=d', 'HEAD').split('\n').filter(Boolean);
 }
 
-function buildAndTest(runDir) {
+// Builds and tests the agent's work, then the hidden acceptance tests in acceptance/<name> for each given name.
+function buildAndTest(runDir, acceptanceNames) {
   const build = dotnet(runDir, ['build', '-warnaserror']);
   if (!build.ok) {
-    return { buildOk: false, testsOk: false, passed: 0, failed: 0, coverage: null, log: build.log.slice(-4000) };
+    return { buildOk: false, testsOk: false, passed: 0, failed: 0, coverage: null, acceptance: null, log: build.log.slice(-4000) };
   }
   const test = dotnet(runDir, ['test', '--no-build', '--collect', 'XPlat Code Coverage', '--results-directory', 'TestResults']);
   return {
@@ -142,8 +143,22 @@ function buildAndTest(runDir) {
     testsOk: test.ok,
     ...testCounts(test.log),
     coverage: lineCoverage(runDir),
+    acceptance: acceptanceTests(runDir, acceptanceNames),
     log: test.log.slice(-4000),
   };
+}
+
+// Copied in only after the agent's diff and coverage are taken, so the agent never sees them and they don't count.
+function acceptanceTests(runDir, names) {
+  const dirs = names.filter(Boolean).map((name) => path.join(EVALS, 'acceptance', name)).filter((dir) => fs.existsSync(dir));
+  if (dirs.length === 0) {
+    return null;
+  }
+  dirs.forEach((dir) => fs.cpSync(dir, runDir, { recursive: true }));
+  const projects = dirs.flatMap((dir) => fs.readdirSync(dir, { recursive: true }).filter((file) => file.endsWith('.csproj')));
+  const runs = projects.map((project) => dotnet(runDir, ['test', project]));
+  const log = runs.map((run) => run.log).join('\n');
+  return { ok: runs.every((run) => run.ok), ...testCounts(log), log: log.slice(-4000) };
 }
 
 function testCounts(log) {

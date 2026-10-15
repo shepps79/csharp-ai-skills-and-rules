@@ -23,6 +23,15 @@ module.exports = {
     return result(testsOk, `${passed} passed, ${failed} failed`);
   },
 
+  // Hidden tests the agent never saw (acceptance/<fixture or task>), run against its finished code.
+  acceptance: (_, { metadata }) => {
+    const { acceptance } = metadata.dotnet;
+    if (!acceptance) {
+      return result(metadata.dotnet.buildOk, metadata.dotnet.buildOk ? 'no acceptance tests for this task' : 'build failed');
+    }
+    return result(acceptance.ok, `${acceptance.passed} passed, ${acceptance.failed} failed`, acceptance.log);
+  },
+
   // Line coverage of the production files the agent changed, or of all production code for a tests-only change.
   // Scored by the coverage itself, so 70% and 10% aren't both just "fail".
   coverage: (_, { metadata, config }) => {

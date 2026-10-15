@@ -46,6 +46,8 @@ tests:
         Callers of `OrderService` need to look up a single order by its id. An order with that id might not exist.
         Add this capability end to end (application port, in-memory adapter, service method) with unit tests.
     assert:
+      # Hidden tests (acceptance/orders, plus acceptance/<vars.acceptance>) exist for orders tasks only.
+      - &acceptance { type: javascript, value: file://graders/checks.js:acceptance, metric: acceptance, weight: 3 }
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
@@ -66,6 +68,7 @@ tests:
       task: |
         `OrderService.PlaceOrderAsync` has no unit tests. Add them.
     assert:
+      - *acceptance
       - { type: javascript, value: file://graders/checks.js:noTestcontainers, metric: no-testcontainers }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - type: llm-rubric
@@ -87,6 +90,7 @@ tests:
         Pending and confirmed orders can be cancelled; cancelling an order that is already cancelled is an error,
         and so is cancelling an order that doesn't exist. Implement this with unit tests.
     assert:
+      - *acceptance
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
