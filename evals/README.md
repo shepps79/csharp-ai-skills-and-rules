@@ -15,7 +15,7 @@ export CLAUDE_CONFIG_DIR=~/.claude-<profile>
 
 ```bash
 npm ci --ignore-scripts
-npm run eval -- --repeat 5                                   # committed rules vs your uncommitted edits
+npm run eval -- --repeat 5                                   # your working-tree rules only
 npm run eval -- --filter-pattern cancel-order                # one task
 npm run eval-baseline -- --repeat 5                          # every variant, incl. none and env
 npm run view                                                 # local results UI
@@ -25,7 +25,8 @@ npm run clean                                                # delete ALL result
 `clean` refuses while an eval is running. Restart `npm run view` afterwards, as it holds the deleted results open.
 
 Run `eval-baseline` first, and again whenever the fingerprint changes (Claude Code, model, plugins, RTK, global
-CLAUDE.md). Day to day, `eval` runs only the `rules@` variants. Its provider filter is fixed: a second
+CLAUDE.md). Day to day, `eval` runs only `rules@WORKTREE`; compare it with the baseline using `npm run report`
+for each eval, or "Compare" in `npm run view`. Its provider filter is fixed: a second
 `--filter-providers` is ignored, so for any other selection call promptfoo directly, e.g.
 `npm run promptfoo -- eval --no-cache --no-share --filter-providers WORKTREE`.
 
@@ -44,8 +45,10 @@ In `npm run view`, each provider column shows its pass rate and a score per name
 |------------------|--------------------------------------------------|--------------------------|
 | `none`           | off                                              | none                     |
 | `env`            | on                                               | none                     |
-| `rules@HEAD`     | on                                               | as committed             |
 | `rules@WORKTREE` | on                                               | your working tree        |
+
+`rules@HEAD` (committed rules run alongside, as a same-session control) is commented out of the provider list;
+restore it with `{ variant: rules, rulesRef: HEAD }` when you need a side-by-side check.
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`; override per provider with `config.model`.
 

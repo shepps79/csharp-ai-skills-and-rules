@@ -1,7 +1,7 @@
 # Evals: next steps
 
 The eval harness in `evals/` (see `evals/README.md`) runs Claude Code headless against a .NET fixture
-for each variant (`none`, `env`, `rules@HEAD`, `rules@WORKTREE`) and grades the result with deterministic
+for each variant (`none`, `env`, `rules@WORKTREE`) and grades the result with deterministic
 checks plus a local `claude -p` judge. Everything stays local; promptfoo telemetry and sharing are off.
 
 ## Current state
@@ -33,7 +33,7 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 6. **Architecture check.** Add an ArchUnitNET or NetArchTest test to the fixture's acceptance set enforcing
    Domain → nothing, Application → Domain, Infrastructure → Application.
 7. **Pairwise judging.** Use promptfoo `select-best` with the judge provider to pick the better of
-   `rules@HEAD` and `rules@WORKTREE` per test, run twice with the order swapped to cancel position bias.
+   two rule versions per test (restore `rules@HEAD` for this), run twice with the order swapped to cancel position bias.
 8. **Fingerprint guard.** A small script (or `javascript` assertion) that fails when results being compared
    have different `metadata.fingerprint.hash`.
 9. **Cost and effort metrics.** Surface `metadata.agent.turns`, tokens and cost per variant; a rule change
