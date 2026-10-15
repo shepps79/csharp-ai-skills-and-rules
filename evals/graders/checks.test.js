@@ -92,6 +92,35 @@ test('layeredProjects requires a web API driving Application and inward-only ref
   }), false);
 });
 
+test('noExceptionsInApplication fails a use case that catches or throws', () => {
+  const application = (code) => ({ 'src/X.Application/OrderService.cs': code });
+  assert.equal(passes('noExceptionsInApplication', application('try { } catch (HttpRequestException) { }')), false);
+  assert.equal(passes('noExceptionsInApplication', application('throw new OrderException();')), false);
+  assert.equal(passes('noExceptionsInApplication', application('gateway.ReserveAsync(o, ct).Bind(Save)')), true);
+});
+
+test('noNullInTests catches null test doubles and null assertions', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/ServiceTests.cs': code });
+  assert.equal(passes('noNullInTests', tests('.ReturnsAsync((Order?)null);')), false);
+  assert.equal(passes('noNullInTests', tests('result.Should().BeNull();')), false);
+  assert.equal(passes('noNullInTests', tests('.ReturnsAsync(Maybe<Order>.None);')), true);
+});
+
+test('testCancellationToken catches default and new tokens', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/ServiceTests.cs': code });
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, default);')), false);
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, new CancellationToken());')), false);
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, TestContext.Current.CancellationToken);')), true);
+});
+
+test('skill checks grade the repo skills the agent loaded', () => {
+  const loaded = (...skills) => ({ agent: { skillsUsed: skills } });
+  assert.equal(passes('skillsUsed', {}, loaded('ponytail:ponytail'), { skills: ['opentelemetry'] }), false);
+  assert.equal(passes('skillsUsed', {}, loaded('opentelemetry', 'aspire'), { skills: ['opentelemetry'] }), true);
+  assert.equal(passes('noSkillsUsed', {}, loaded('ef-core')), false);
+  assert.equal(passes('noSkillsUsed', {}, loaded('ponytail:ponytail')), true);
+});
+
 test('coverage scores changed production files, or everything for a tests-only change', () => {
   const coverage = (files) => ({ dotnet: { coverage: files } });
   const service = { 'src/X.Application/Service.cs': 'class S;' };
@@ -106,11 +135,4 @@ test('acceptance fails when the hidden tests fail and when the build failed', ()
   assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: false, passed: 4, failed: 1, log: '' } })), false);
   assert.equal(passes('acceptance', {}, dotnet({ buildOk: false, acceptance: null })), false);
   assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: true, passed: 5, failed: 0, log: '' } })), true);
-});
-
-test('testCancellationToken catches default and new tokens', () => {
-  const tests = (code) => ({ 'src/X.UnitTests/ServiceTests.cs': code });
-  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, default);')), false);
-  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, new CancellationToken());')), false);
-  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, TestContext.Current.CancellationToken);')), true);
 });

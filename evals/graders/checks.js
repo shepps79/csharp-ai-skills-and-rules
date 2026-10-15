@@ -9,6 +9,9 @@ const isCSharp = (file) => file.endsWith('.cs');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
 // Files the fixture ships to make the build the gate for the compiler-enforced rules.
 const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props'];
+const REPO_SKILLS = fs.readdirSync(path.resolve(__dirname, '../../.claude/skills'));
+// The compiler (CS8524) and dotnet.md demand a throwing discard arm on exhaustive enum switches.
+const DISCARD_ARM_THROW = /(\b_\s*=>|default\s*:)\s*throw\b/g;
 const SUPPRESSION = new RegExp([
   '#pragma\\s+warning\\s+disable', '#nullable\\s+disable', 'SuppressMessage', '<NoWarn>',
   '<(TreatWarningsAsErrors|EnforceCodeStyleInBuild|GenerateDocumentationFile)>\\s*false', '<Nullable>\\s*disable',
@@ -96,13 +99,29 @@ module.exports = {
     return result(hits.length > 0, hits.length ? `Maybe<T> in ${hits.join(', ')}` : 'no Maybe<T> in production code');
   },
 
-  // A throwing discard arm is allowed: the compiler (CS8524) and dotnet.md demand one on exhaustive enum switches.
-  noThrowInDomain: (_, context) => {
-    const throws = (code) => /\bthrow\b/.test(stripComments(code).replace(/(\b_\s*=>|default\s*:)\s*throw\b/g, ''));
-    const hits = context.metadata.changedFiles
-      .filter((file) => isCSharp(file) && /\.Domain\//.test(file))
-      .filter((file) => throws(read(context.metadata, file)));
-    return result(hits.length === 0, hits.length ? `domain throws for an expected business failure: ${hits.join(', ')}` : 'ok');
+  noThrowInDomain: (_, context) =>
+    noExceptionFlow(context, 'Domain', /\bthrow\b/, 'domain throws for an expected business failure'),
+
+  // Ports return Results (dotnet-functional.md), so a use case has nothing to catch: a catch means an adapter let an
+  // exception through its port, as hexagonal-architecture.md's "translate to an exception" suggests.
+  noExceptionsInApplication: (_, context) =>
+    noExceptionFlow(context, 'Application', /\b(throw|catch)\b/, 'application throws or catches instead of composing Results'),
+
+  // testing.md's mocking example stubs a missing entity with (Order?)null and asserts BeNull().
+  noNullInTests: (_, context) =>
+    noMatches(context, (file) => isCSharp(file) && isTestFile(file),
+      /\(\s*[\w<>]+\?\s*\)\s*null\b|\.Returns(Async)?\(\s*null\b|\.Should\(\)\.BeNull\(\)/, 'test models absence with null'),
+
+  // Repo skills (.claude/skills) the task should load; other skills may load too.
+  skillsUsed: (_, { metadata, config }) => {
+    const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
+    return result(missing.length === 0, missing.length ? `skill not loaded: ${missing.join(', ')}` : 'ok');
+  },
+
+  // A task no repo skill covers; loading one anyway costs context and can steer the agent off course.
+  noSkillsUsed: (_, { metadata }) => {
+    const used = [...new Set(metadata.agent.skillsUsed.filter((skill) => REPO_SKILLS.includes(skill)))];
+    return result(used.length === 0, used.length ? `unneeded skill loaded: ${used.join(', ')}` : 'ok');
   },
 
   centralPackageManagement: (_, context) => {
@@ -170,6 +189,13 @@ module.exports = {
   noTestcontainers: (_, context) =>
     noMatches(context, () => true, /Testcontainers/i, 'Testcontainers used where the port is in-memory'),
 };
+
+function noExceptionFlow(context, layer, pattern, problem) {
+  const hits = context.metadata.changedFiles
+    .filter((file) => isCSharp(file) && file.includes(`.${layer}/`))
+    .filter((file) => pattern.test(stripComments(read(context.metadata, file)).replace(DISCARD_ARM_THROW, '')));
+  return result(hits.length === 0, hits.length ? `${problem}: ${hits.join(', ')}` : 'ok');
+}
 
 function noMatches(context, include, pattern, problem) {
   const hits = matchingFiles(context, include, pattern);
