@@ -11,7 +11,7 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
   (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
   mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
   hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `greenfield-inventory` (new service).
-- 25 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- 26 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
   contract test for `order-limits`.
 - Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores

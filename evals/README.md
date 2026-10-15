@@ -114,7 +114,8 @@ the report exits 1 when the evals it prints have more than one.
   would let the build check pass. `projectsInSolution` fails a project the build and test run would never see.
   `coverage` is the line coverage (merged across test projects) of the production files the agent changed, or of all
   of them for a tests-only change; it needs coverlet.collector, and the provider runs `dotnet test --collect "XPlat Code
-  Coverage"`. `skillsUsed`/`noSkillsUsed` grade the repo skills the agent loaded.
+  Coverage"`. On greenfield, `coverletPackages` also requires every new test project to reference coverlet.collector
+  and coverlet.msbuild, versioned in `Directory.Packages.props`. `skillsUsed`/`noSkillsUsed` grade the repo skills the agent loaded.
   `npm test` runs the graders' own tests; run it after changing a check.
 - `acceptance/`: hidden tests the agent never sees. After the agent's diff, build and coverage are taken, the provider
   copies `acceptance/<fixture>/` and `acceptance/<vars.acceptance>/` over the run dir and runs `dotnet test` on each
