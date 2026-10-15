@@ -35,6 +35,9 @@ defaultTest:
     - { type: javascript, value: file://graders/checks.js:fileScopedNamespaces, metric: file-scoped-namespaces }
     - { type: javascript, value: file://graders/checks.js:sealedTestClasses, metric: sealed-test-classes }
     - { type: javascript, value: file://graders/checks.js:testCancellationToken, metric: test-cancellation-token }
+    - { type: javascript, value: file://graders/checks.js:mocksOnlyPorts, metric: mocks-only-ports }
+    - { type: javascript, value: file://graders/checks.js:noLoggerAssertions, metric: no-logger-assertions }
+    - { type: javascript, value: file://graders/checks.js:noLogicInTests, metric: no-logic-in-tests }
 
 # The rubrics are the fixed yardstick: they must not change when the rules under test change.
 tests:
@@ -50,6 +53,12 @@ tests:
       - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
+      # The task adds a lookup, so the in-memory adapter is observable and can replace a mock.
+      - &preferInMemoryRepository
+        type: javascript
+        value: file://graders/checks.js:preferRealCollaborators
+        metric: prefer-real-collaborators
+        config: { prefer: { IOrderRepository: InMemoryOrderRepository } }
       - type: llm-rubric
         metric: judge
         weight: 3
@@ -94,6 +103,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - *preferInMemoryRepository
       - type: llm-rubric
         metric: judge
         weight: 3
@@ -260,6 +270,33 @@ tests:
           - A 404 becomes a failure Result that the endpoint maps to 400; no HTTP exception crosses the port.
           - Tests stub the HTTP boundary (an HttpMessageHandler, or the port faked for the service), and the existing
             endpoint tests are updated so no test calls a real network.
+          Score 0-1 by the share of points satisfied.
+
+  - description: get-order-endpoint (wiring — tests through the real host; prefer real collaborators over mocks)
+    vars:
+      acceptance: get-order-endpoint
+      task: |
+        Clients need to fetch a single order over HTTP: `GET /orders/{id}` returns the order in the same shape as
+        `POST /orders` does, or 404 Not Found when there is no such order. Add tests.
+    assert:
+      - *acceptance
+      - *preferInMemoryRepository
+      - { type: javascript, value: file://graders/checks.js:endpointTestsThroughHost, metric: endpoint-tests-through-host, config: { route: '/orders/' } }
+      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - Absence is a Maybe from the repository port through OrderService, and the endpoint maps None to 404.
+          - Endpoint tests use WebApplicationFactory<Program> and run the real composition root and in-memory adapter:
+            no registrations replaced and no mocks.
+          - Unit tests use the real InMemoryOrderRepository and real Order objects rather than Moq; a mock appears only
+            where nothing real can stand in.
+          - Tests cover found and not-found, contain no logic, are named Method_ExpectedBehavior_Scenario, use
+            AwesomeAssertions and pass TestContext.Current.CancellationToken.
           Score 0-1 by the share of points satisfied.
 
   - description: greenfield-inventory (new service from an empty repo)
