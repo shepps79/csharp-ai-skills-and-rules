@@ -1,6 +1,7 @@
 // Runs Claude Code headless against a fresh copy of a fixture, then builds and tests the result.
 // Variants: "none" (bare model), "env" (your global setup, no repo rules),
 // "rules" (global setup + this repo's .claude/ at `rulesRef`: a git ref, or WORKTREE for uncommitted edits).
+// `excludeRules: [file.md]` drops rule files for an ablation run.
 const { execFileSync, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -23,8 +24,9 @@ class ClaudeCodeProvider {
   }
 
   id() {
-    const { variant, rulesRef } = this.config;
-    return variant === 'rules' ? `claude-code:rules@${rulesRef}` : `claude-code:${variant}`;
+    const { variant, rulesRef, excludeRules = [] } = this.config;
+    const without = excludeRules.map((file) => `-${file}`).join('');
+    return variant === 'rules' ? `claude-code:rules@${rulesRef}${without}` : `claude-code:${variant}`;
   }
 
   async callApi(prompt, context) {
@@ -54,13 +56,14 @@ class ClaudeCodeProvider {
   }
 }
 
-function createRunDir(fixture, { variant, rulesRef }) {
+function createRunDir(fixture, { variant, rulesRef, excludeRules = [] }) {
   const runDir = path.join(RUNS_ROOT, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, 'repo');
   // Fixtures symlink shared files from templates/; copy their contents so each run dir is self-contained.
   fs.mkdirSync(runDir, { recursive: true });
   execFileSync('cp', ['-RL', `${path.join(EVALS, 'fixtures', fixture)}/.`, runDir]);
   if (variant === 'rules') {
     copyRules(rulesRef, runDir);
+    excludeRules.forEach((file) => fs.rmSync(path.join(runDir, '.claude', 'rules', file)));
   }
   // Rules are committed with the fixture so the diff only shows the agent's work.
   git(runDir, 'init', '-q');
