@@ -47,26 +47,26 @@ Practices that reinforce the rules without being mandatory.
 
 ### ✅ Do This
 
-```kotlin
+```csharp
 // Intent-revealing name, single responsibility, no speculative parameters
-fun applyVatToInvoice(invoice: Invoice): Invoice =
-    invoice.copy(total = invoice.subtotal * VAT_RATE)
+public static Invoice ApplyVatToInvoice(Invoice invoice) =>
+    invoice with { Total = invoice.Subtotal * VatRate };
 
 // Conceptual duplication collapsed by naming the shared idea
-fun isWeekend(day: DayOfWeek): Boolean =
-    day == SATURDAY || day == SUNDAY
+public static bool IsWeekend(DayOfWeek day) =>
+    day == DayOfWeek.Saturday || day == DayOfWeek.Sunday;
 ```
 
 ### ❌ Don't Do This
 
-```kotlin
+```csharp
 // Vague name, speculative flag, hidden intent
-fun process(invoice: Invoice, mode: Int = 0): Invoice { ... }
+public static Invoice Process(Invoice invoice, int mode = 0) { ... }
 
 // Same rule expressed in three places — change one and the others rot
-fun isOpenOnSaturday() = day == SATURDAY
-fun isOpenOnSunday() = day == SUNDAY
-// elsewhere: if (day == SATURDAY || day == SUNDAY) ...
+public bool IsOpenOnSaturday() => day == DayOfWeek.Saturday;
+public bool IsOpenOnSunday() => day == DayOfWeek.Sunday;
+// elsewhere: if (day == DayOfWeek.Saturday || day == DayOfWeek.Sunday) ...
 ```
 
 ## Decision Framework
@@ -104,8 +104,8 @@ fun isOpenOnSunday() = day == SUNDAY
 
 - rules/domain-driven-design.md — Ubiquitous language is a concrete way to satisfy "reveals intent."
 - rules/hexagonal-architecture.md — Ports and adapters reduce structural duplication and clarify boundaries.
-- rules/kotest.md — Test-first practice operationalizes RULE-001.
-- rules/kotlin.md — Functional Kotlin style supports intention-revealing, fewest-elements code.
+- rules/testing.md — Test-first practice operationalizes RULE-001.
+- rules/dotnet-functional.md — Functional C# style supports intention-revealing, fewest-elements code.
 
 ## References
 
