@@ -4,14 +4,17 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { test } = require('node:test');
+const { after, test } = require('node:test');
 const checks = require('./checks.js');
 
 const FIXTURE = { '.editorconfig': 'root = true\n', 'Directory.Build.props': '<Project />\n' };
+const runDirs = [];
+after(() => runDirs.forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
 
 // A committed fixture plus the agent's changes, staged the way the provider stages them.
 function run(changes) {
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'checks-test-'));
+  runDirs.push(runDir);
   const write = (files) => Object.entries(files).forEach(([file, content]) => {
     fs.mkdirSync(path.dirname(path.join(runDir, file)), { recursive: true });
     fs.writeFileSync(path.join(runDir, file), content);
