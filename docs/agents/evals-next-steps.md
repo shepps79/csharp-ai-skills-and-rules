@@ -30,11 +30,21 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
    `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
-   database adapter in `orders`), `fast-endpoints`, `dependency-injection` and `aspire`.
-4. **More hidden acceptance tests.** Only `order-limits` fixes a contract in its task text. `find-order`,
+   database adapter in `orders`), `fast-endpoints`, `dependency-injection` and `aspire`. The workflow skills
+   (`commit`, `code-review`, `create-pr`, `ralph-prep`, `write-spec`, `write-tickets`, `writing-great-skills`)
+   have no tasks either. `none` has no repo skills, so it fails `skillsUsed` by design.
+4. **Check the configuration skill's trigger.** In the one `order-limits` smoke run (`rules@WORKTREE`), the agent never
+   loaded `configuration` and read the limit with `IConfiguration.GetValue` instead of the Options pattern, failing
+   both `skillsUsed` and the judge. One run is a signal, not a result; if the baseline repeats it, the skill's
+   description likely misses wording like "configurable per environment".
+5. **Skill ablation.** `excludeRules` only drops rule files; `rules@WORKTREE` copies all of `.claude/`, skills included.
+   Add an equivalent `excludeSkills` to measure what each skill adds. Until then, skill content is judged only
+   indirectly: the `order-limits` and `add-telemetry` rubrics grade what those skills teach, so a low score can't
+   tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
+6. **More hidden acceptance tests.** Only `order-limits` fixes a contract in its task text. `find-order`,
    `cancel-order` and `get-order-mocked` leave method names to the agent, so they can't have contract tests without
    changing their task text, which changes the yardstick.
-5. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
+7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
    rules settle and run `eval-pairwise` in both orders.
 
 ## Rule problems the evals now surface
