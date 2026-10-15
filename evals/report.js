@@ -8,8 +8,14 @@ const path = require('node:path');
 
 const evalId = process.argv[2] ?? 'latest';
 const exportPath = path.join(os.tmpdir(), `csharp-skills-eval-${process.pid}.json`);
-execFileSync('npm', ['run', '--silent', 'promptfoo', '--', 'export', 'eval', evalId, '-o', exportPath],
-  { cwd: __dirname, stdio: 'ignore' });
+try {
+  execFileSync('npm', ['run', '--silent', 'promptfoo', '--', 'export', 'eval', evalId, '-o', exportPath],
+    { cwd: __dirname, encoding: 'utf8', stdio: 'pipe' });
+} catch (error) {
+  const reason = `${error.stdout}${error.stderr}`.split('\n').find((line) => /no eval found/i.test(line));
+  console.error(reason ? `${reason}. Run an eval first (npm run eval or npm run eval-baseline).` : error.message);
+  process.exit(1);
+}
 const exported = JSON.parse(fs.readFileSync(exportPath, 'utf8'));
 fs.rmSync(exportPath);
 
