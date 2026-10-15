@@ -59,7 +59,8 @@ gate() {
     )
 }
 
-# --- check.sh helpers. A check script sets W (workdir), calls expect_* and ends with `finish`. ---
+# --- check.sh helpers. check.sh <workdir> <rundir>: sets W and R, calls expect_* and ends with `finish`. ---
+# Regexes are Perl-compatible (grep -P).
 
 _fails=0
 
@@ -72,15 +73,22 @@ added_cs() {
 }
 
 # Production code only: anything under src/ that isn't a test project.
-added_prod() { added_cs '^src/' | grep -v '^src/[^/]*Tests/' || true; }
+added_prod() { added_cs '^src/' | grep -vP '(^|/)[^/]*Tests/' || true; }
+# Test code wherever it lives, so a misplaced tests/ folder is still graded as tests.
+added_tests() { added_cs '(^|/)[^/]*Tests/' || true; }
+# added_in <path-regex>: added .cs lines under a path, e.g. added_in '^src/[^/]*\.Domain/'.
+added_in() { added_cs "$1" || true; }
 
-expect_none() { # <name> <regex> — no added production line may match
-    local hits; hits="$(added_prod | grep -E -- "$2" || true)"
+# changed_files: every path changed since baseline, committed or not.
+changed_files() { git -C "$W" add -A >/dev/null; git -C "$W" diff --cached --name-only baseline; }
+
+expect_none() { # <name> <regex> [source fn, default added_prod] — no added line may match
+    local hits; hits="$("${3:-added_prod}" | grep -P -- "$2" || true)"
     if [[ -z "$hits" ]]; then echo "PASS $1"; else echo "FAIL $1"; echo "$hits" | head -5 | sed 's/^/    /'; _fails=$((_fails+1)); fi
 }
 
-expect_some() { # <name> <regex> — at least one added production line must match
-    if added_prod | grep -qE -- "$2"; then echo "PASS $1"; else echo "FAIL $1 (no added line matches /$2/)"; _fails=$((_fails+1)); fi
+expect_some() { # <name> <regex> [source fn, default added_prod] — at least one added line must match
+    if "${3:-added_prod}" | grep -qP -- "$2"; then echo "PASS $1"; else echo "FAIL $1 (no added line matches /$2/)"; _fails=$((_fails+1)); fi
 }
 
 expect() { # <name> <command...> — the command must succeed
@@ -89,3 +97,27 @@ expect() { # <name> <command...> — the command must succeed
 }
 
 finish() { [[ $_fails -eq 0 ]]; exit $?; }
+
+# --- transcript helpers over $R/transcript.jsonl (claude -p stream-json) ---
+
+_tool_uses() { jq -c 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use")' "${R}/transcript.jsonl" 2>/dev/null; }
+bash_cmds() { _tool_uses | jq -r 'select(.name=="Bash") | .input.command'; }
+final_text() { jq -r 'select(.type=="result") | .result // empty' "${R}/transcript.jsonl" 2>/dev/null; }
+skills_fired() { _tool_uses | jq -r 'select(.name=="Skill") | .input.skill // .input.command // empty' | sort -u | paste -sd'|' -; }
+
+# verified_after_edit: 1 if `dotnet build`/`dotnet test` ran after the last file edit, 0 if not, empty if nothing was edited.
+verified_after_edit() {
+    _tool_uses | jq -rs '
+        def verify: .name == "Bash" and (.input.command | test("dotnet\\s+(build|test)"));
+        # Shell writes (heredoc redirects, sed -i, tee) count as edits too.
+        def edit: (.name | IN("Edit","Write","MultiEdit","NotebookEdit"))
+            or (.name == "Bash" and (verify | not) and (.input.command | test(">\\s*[^&\\s]|\\bsed\\s+-i|\\btee\\b")));
+        (to_entries | map(select(.value | edit)) | last | .key) as $edit
+        | if $edit == null then "" else
+            (to_entries | map(select(.key > $edit and (.value | verify))) | if length > 0 then 1 else 0 end)
+          end'
+}
+
+expect_cmd() { # <name> <regex> — some Bash command the agent ran must match
+    if bash_cmds | grep -qP -- "$2"; then echo "PASS $1"; else echo "FAIL $1 (no command matches /$2/)"; _fails=$((_fails+1)); fi
+}
