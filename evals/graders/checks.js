@@ -1,11 +1,19 @@
 // Deterministic graders. Each reads facts the provider recorded (build/test results, changed files)
 // and only inspects files the agent changed, so the fixture itself never fails a check.
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const isTestFile = (file) => /Tests?\//.test(file) || /Tests?\.cs$/.test(file);
 const isCSharp = (file) => file.endsWith('.cs');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+// Files the fixture ships to make the build the gate for the compiler-enforced rules.
+const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props'];
+const SUPPRESSION = new RegExp([
+  '#pragma\\s+warning\\s+disable', '#nullable\\s+disable', 'SuppressMessage', '<NoWarn>',
+  '<(TreatWarningsAsErrors|EnforceCodeStyleInBuild|GenerateDocumentationFile)>\\s*false', '<Nullable>\\s*disable',
+  '\\.severity\\s*=\\s*(none|silent|suggestion)',
+].join('|'), 'i');
 
 module.exports = {
   build: (_, { metadata }) => result(metadata.dotnet.buildOk, 'dotnet build -warnaserror', metadata.dotnet.log),
@@ -20,6 +28,26 @@ module.exports = {
     const minimum = config?.minimum ?? 3;
     const added = (output.match(/^\+\s*\[(Fact|Theory)\b(?![^\]]*Skip)/gm) ?? []).length;
     return result(added >= minimum, `${added} tests added, need ${minimum}`);
+  },
+
+  // A project missing from the solution is never built or tested, so its failures would go unseen.
+  projectsInSolution: (_, { metadata }) => {
+    const projects = metadata.changedFiles.filter((file) => file.endsWith('.csproj'));
+    const solutions = fs.readdirSync(metadata.runDir).filter((file) => /\.slnx?$/.test(file));
+    const listed = solutions.map((file) => read(metadata, file).replaceAll('\\', '/')).join('\n');
+    const missing = projects.filter((file) => !listed.includes(file));
+    const pass = missing.length === 0 && (projects.length === 0 || solutions.length > 0);
+    return result(pass, missing.length ? `not in a root solution: ${missing.join(', ')}` : 'ok');
+  },
+
+  // Turning analyzers or warnings off would let the build check pass code that breaks the compiler-enforced rules.
+  noWarningSuppression: (_, context) => {
+    const changedGuards = git(context.metadata.runDir, 'diff', '--cached', '--name-only', '--diff-filter=MD', 'HEAD', '--',
+      ...BUILD_GUARDS).split('\n').filter(Boolean);
+    const hits = matchingFiles(context, (file) => /\.(cs|csproj|props|targets|editorconfig|globalconfig)$/.test(file),
+      SUPPRESSION);
+    const problems = [...changedGuards.map((file) => `${file} changed or deleted`), ...hits.map((file) => `suppression in ${file}`)];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
 
   centralPackageVersions: (_, context) =>
@@ -121,6 +149,10 @@ function matchingFiles({ metadata }, include, pattern) {
 
 function read({ runDir }, file) {
   return fs.readFileSync(path.join(runDir, file), 'utf8');
+}
+
+function git(cwd, ...args) {
+  return execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).trim();
 }
 
 function result(pass, reason, detail = '') {

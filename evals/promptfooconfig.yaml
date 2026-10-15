@@ -29,6 +29,8 @@ defaultTest:
   assert:
     - { type: javascript, value: file://graders/checks.js:build, metric: build, weight: 3 }
     - { type: javascript, value: file://graders/checks.js:tests, metric: tests, weight: 3 }
+    - { type: javascript, value: file://graders/checks.js:projectsInSolution, metric: projects-in-solution }
+    - { type: javascript, value: file://graders/checks.js:noWarningSuppression, metric: no-warning-suppression }
     - { type: javascript, value: file://graders/checks.js:centralPackageVersions, metric: central-packages }
     - { type: javascript, value: file://graders/checks.js:noInternalsVisibleTo, metric: no-internals-visible-to }
     - { type: javascript, value: file://graders/checks.js:fileScopedNamespaces, metric: file-scoped-namespaces }
