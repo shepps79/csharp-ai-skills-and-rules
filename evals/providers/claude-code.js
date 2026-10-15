@@ -62,8 +62,10 @@ function createRunDir(fixture, { variant, rulesRef }) {
   }
   // Rules are committed with the fixture so the diff only shows the agent's work.
   git(runDir, 'init', '-q');
+  // Keeps build output out of the diff without a .gitignore the agent could see (greenfield starts empty).
+  fs.appendFileSync(path.join(runDir, '.git', 'info', 'exclude'), 'bin/\nobj/\nTestResults/\n');
   git(runDir, 'add', '-A');
-  git(runDir, '-c', 'user.name=eval', '-c', 'user.email=eval@localhost', 'commit', '-qm', 'fixture');
+  git(runDir, '-c', 'user.name=eval', '-c', 'user.email=eval@localhost', 'commit', '-qm', 'fixture', '--allow-empty');
   return runDir;
 }
 
@@ -114,7 +116,7 @@ function runAgent(prompt, runDir, { variant, model }) {
 
 function stageAndListChanges(runDir) {
   git(runDir, 'add', '-A');
-  return git(runDir, 'diff', '--cached', '--name-only', 'HEAD').split('\n').filter(Boolean);
+  return git(runDir, 'diff', '--cached', '--name-only', '--diff-filter=d', 'HEAD').split('\n').filter(Boolean);
 }
 
 function buildAndTest(runDir) {

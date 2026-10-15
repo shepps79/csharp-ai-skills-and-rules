@@ -52,7 +52,10 @@ restore it with `{ variant: rules, rulesRef: HEAD }` when you need a side-by-sid
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`; override per provider with `config.model`.
 
-Each run copies `fixtures/<fixture>` to a fresh git repo under `$TMPDIR/csharp-skills-evals/`, outside this repo so its
+Fixtures: `orders` (existing service) and `empty` (greenfield). Both symlink `.editorconfig` from `templates/dotnet/`,
+and `orders` also its `Directory.Build.props`, so the compiler-enforced rules have one source.
+
+Each run copies `fixtures/<fixture>` (symlinks resolved) to a fresh git repo under `$TMPDIR/csharp-skills-evals/`, outside this repo so its
 rules aren't picked up from a parent directory. The agent runs in `auto` permission mode. Run directories and
 `transcript.jsonl` are kept there for inspection.
 
@@ -91,4 +94,4 @@ Single runs are noisy. Use `--repeat 5` or more, and treat differences smaller t
 ## Add a task
 
 1. Add a test to `promptfooconfig.yaml` with the task text in `vars.task`, the checks that apply, and a rubric.
-2. Add a fixture under `fixtures/` only if `orders` can't host the task.
+2. Add a fixture under `fixtures/` only if `orders` (existing service) or `empty` (greenfield) can't host the task.

@@ -98,3 +98,35 @@ tests:
           - Tests cover pending, confirmed, already-cancelled and missing-order cases.
           - Names reveal intent, there is no speculative code or duplication, and members follow the usual C# ordering.
           Score 0-1 by the share of points satisfied.
+
+  - description: greenfield-inventory (new service from an empty repo)
+    vars:
+      fixture: empty
+      task: |
+        This repository is empty. Create a new .NET 10 inventory service, with the solution file at the repository root.
+        Clients register products (SKU and name) and adjust their stock level up or down over HTTP.
+        Stock can never go negative, and adjusting an unknown product is an error. Include tests.
+    assert:
+      - { type: javascript, value: file://graders/checks.js:centralPackageManagement, metric: central-package-management }
+      - { type: javascript, value: file://graders/checks.js:warningsAsErrors, metric: warnings-as-errors }
+      - { type: javascript, value: file://graders/checks.js:layeredProjects, metric: layered-projects }
+      - { type: javascript, value: file://graders/checks.js:testsUnderSrc, metric: tests-under-src }
+      - { type: javascript, value: file://graders/checks.js:functionalLibrary, metric: functional-library }
+      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff creating a new C# .NET 10 inventory service from an empty repository.
+          Pass only if all of these hold:
+          - Ports and adapters: Domain has no framework or infrastructure dependencies; Application defines the ports;
+            Infrastructure and the HTTP API are adapters; project references point inwards only.
+          - Business rules (no negative stock, unknown product) live in the domain and are returned as Result failures,
+            not thrown; absence uses Maybe<T>, not null.
+          - Solution hygiene: central package management, warnings as errors, nullable enabled, file-scoped namespaces,
+            sealed classes, and nothing speculative (no unused abstractions, layers or config).
+          - Tests: unit tests for the domain rules and integration tests for the HTTP endpoints, using xUnit v3 and
+            AwesomeAssertions, named Method_ExpectedBehavior_Scenario.
+          Score 0-1 by the share of points satisfied.
