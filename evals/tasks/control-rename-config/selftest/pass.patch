@@ -1,0 +1,25 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..99ac6ce 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -5,7 +5,7 @@ using Orders.Infrastructure;
+ var builder = WebApplication.CreateBuilder(args);
+ 
+ builder.Services.AddDbContext<OrdersDbContext>(options =>
+-    options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
++    options.UseNpgsql(builder.Configuration.GetConnectionString("OrdersDb")));
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
+ 
+diff --git a/src/Orders.Api/appsettings.json b/src/Orders.Api/appsettings.json
+index d82dc1b..a05e212 100644
+--- a/src/Orders.Api/appsettings.json
++++ b/src/Orders.Api/appsettings.json
+@@ -1,6 +1,6 @@
+ {
+   "ConnectionStrings": {
+-    "Orders": "Host=localhost;Database=orders;Username=postgres;Password=postgres"
++    "OrdersDb": "Host=localhost;Database=orders;Username=postgres;Password=postgres"
+   },
+   "Logging": {
+     "LogLevel": {

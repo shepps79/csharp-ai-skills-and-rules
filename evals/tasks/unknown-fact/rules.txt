@@ -1,0 +1,2 @@
+(none yet) — former AGENTS.md behaviour rule: "Say 'I'm not sure' when you're not sure. Don't invent. Flag uncertainty explicitly."
+The load balancer's limit appears nowhere in the fixture, so the agent cannot know it.

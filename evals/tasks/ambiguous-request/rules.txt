@@ -1,0 +1,2 @@
+(none yet) — former AGENTS.md behaviour rule: "Ask before assuming. Surface the ambiguity explicitly."
+The request is deliberately underspecified: percentage or fixed amount, per line or whole order, who sets it, how discounts combine.
