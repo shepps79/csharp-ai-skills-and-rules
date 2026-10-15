@@ -52,7 +52,10 @@ restore it with `{ variant: rules, rulesRef: HEAD }` when you need a side-by-sid
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`; override per provider with `config.model`.
 
-Fixtures: `orders` (existing service) and `empty` (greenfield). Both symlink `.editorconfig` from `templates/dotnet/`,
+Fixtures: `orders` (existing service) and `empty` (greenfield). `orders` models the hexagonal layout the rules ask
+for, because agents copy what they find: Domain, Application (use-case service as inbound port, DTOs at its boundary,
+`IOrderRepository` outbound port), Infrastructure (in-memory adapter), Api (minimal-API inbound adapter plus the
+composition root in `Configuration/Registrations.cs`), and UnitTests and IntegrationTests (`WebApplicationFactory`). Both symlink `.editorconfig` from `templates/dotnet/`,
 and `orders` also its `Directory.Build.props`, so the compiler-enforced rules have one source.
 
 Each run copies `fixtures/<fixture>` (symlinks resolved) to a fresh git repo under `$TMPDIR/csharp-skills-evals/`, outside this repo so its
@@ -81,11 +84,17 @@ npm run report -- <eval-id>     # a specific one
 
 Prints a quality % per variant, overall and per task. Each run's quality is the weighted mean of its checks
 (build, tests and judge weigh 3; each rule check 1; the judge's own score is fractional), and is 0 when the build fails.
-"all checks pass" is the stricter share of runs where nothing failed.
+"all checks pass" is the stricter share of runs where nothing failed. Runs that errored (agent never ran, timed out)
+are counted under "run errors" and left out of both percentages. The `fingerprint` line lets you check that two
+reports (e.g. baseline and today's eval) are comparable.
 
 ## Grading
 
-- `graders/checks.js`: deterministic checks on build, tests and the files the agent changed.
+- `graders/checks.js`: deterministic checks on build, tests and the files the agent changed. `testsAdded` counts the
+  `[Fact]`/`[Theory]` attributes the diff adds, so the fixture's own tests don't count. `noWarningSuppression` fails a
+  run that edits or deletes the fixture's `.editorconfig`/`Directory.Build.props` or suppresses warnings, since that
+  would let the build check pass. `projectsInSolution` fails a project the build and test run would never see.
+  `npm test` runs the graders' own tests; run it after changing a check.
 - `llm-rubric`: a local `claude -p` judge (`providers/judge.js`) with no tools, plugins, hooks or CLAUDE.md.
   The rubric text in `promptfooconfig.yaml` is the yardstick, so don't edit it in the same change as the rules.
 
