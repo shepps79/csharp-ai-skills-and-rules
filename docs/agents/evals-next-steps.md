@@ -10,7 +10,8 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 - Two fixtures (`fixtures/orders`, `fixtures/empty`) and four tasks: `find-order` (null trap), `place-order-tests`
   (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `greenfield-inventory` (new service).
 - `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
-- 16 deterministic checks in `evals/graders/checks.js`, plus one `llm-rubric` per task.
+- 19 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- The checks were hardened on 2026-10-15 (see `evals-review.md`); results graded before then aren't comparable.
 - Baseline `eval-ucp-2026-10-15T10:15:40` (3 tasks, before greenfield): all checks pass none 7%, env 27%,
   rules 93–100%. Identical HEAD/WORKTREE runs differed by 7 points, which is the noise floor at 15 runs.
 
@@ -26,11 +27,12 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
    - `hexagonal-architecture.md` "translate to an exception" vs `dotnet-functional.md` "translate to a Result".
 4. **Skill-triggering tasks.** Tasks that should load a skill (`ef-core`, `fast-endpoints`, `configuration`,
    `dependency-injection`, `opentelemetry`, `aspire`) and tasks that shouldn't. Grade on
-   `metadata.agent.skillsUsed`. Needs a fixture with an API project and EF Core (add `fixtures/orders-api`).
+   `metadata.agent.skillsUsed`. `orders` now has a minimal-API project; EF Core-triggering tasks still need a database adapter.
 5. **Hidden acceptance tests.** For tasks with a fixed contract, copy tests from `acceptance/<task-id>/`
    into the run dir after the agent finishes and run them in `buildAndTest`.
-6. **Architecture check.** Add an ArchUnitNET or NetArchTest test to the fixture's acceptance set enforcing
-   Domain → nothing, Application → Domain, Infrastructure → Application.
+6. **Architecture check.** `layeredProjects` now checks project references (Domain → nothing, Application → Domain,
+   a web API → Application, Infrastructure ↛ API), but only for projects the agent changed, so only greenfield.
+   An ArchUnitNET/NetArchTest test in the fixture would also cover namespaces and types within `orders`.
 7. **Pairwise judging.** Use promptfoo `select-best` with the judge provider to pick the better of
    two rule versions per test (restore `rules@HEAD` for this), run twice with the order swapped to cancel position bias.
 8. **Fingerprint guard.** A small script (or `javascript` assertion) that fails when results being compared
