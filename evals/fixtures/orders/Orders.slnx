@@ -4,4 +4,5 @@
   <Project Path="src/Orders.Infrastructure/Orders.Infrastructure.csproj" />
   <Project Path="src/Orders.Api/Orders.Api.csproj" />
   <Project Path="src/Orders.UnitTests/Orders.UnitTests.csproj" />
+  <Project Path="src/Orders.IntegrationTests/Orders.IntegrationTests.csproj" />
 </Solution>
