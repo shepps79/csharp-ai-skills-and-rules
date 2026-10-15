@@ -38,6 +38,7 @@ defaultTest:
     - { type: javascript, value: file://graders/checks.js:mocksOnlyPorts, metric: mocks-only-ports }
     - { type: javascript, value: file://graders/checks.js:noLoggerAssertions, metric: no-logger-assertions }
     - { type: javascript, value: file://graders/checks.js:noLogicInTests, metric: no-logic-in-tests }
+    - { type: javascript, value: file://graders/checks.js:independentExpectations, metric: independent-expectations }
 
 # The rubrics are the fixed yardstick: they must not change when the rules under test change.
 tests:
@@ -90,6 +91,35 @@ tests:
           - Tests cover success and each failure path (missing customer, no items) and verify the order is persisted only on success.
           - Test names follow Method_ExpectedBehavior_Scenario; assertions use AwesomeAssertions; no logic in tests.
           - Tests check observable outcomes, not implementation details.
+          Score 0-1 by the share of points satisfied.
+
+  - description: summary-tests (trap — tautological tests that take expected values from production code or the mock)
+    vars:
+      # Bugs planted in fixture code after the agent finishes; its tests must fail under each (mutants/summary-tests.json).
+      mutants: summary-tests
+      task: |
+        `OrderService.PlaceOrderAsync` returns an `OrderSummary`, but nothing tests what is in it.
+        Add unit tests for the summary it returns, mocking the repository with Moq.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:killsPlantedMutants, metric: kills-planted-mutants, weight: 3 }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff adding unit tests for the OrderSummary returned by OrderService.PlaceOrderAsync,
+          in a C# xUnit v3 project, with Moq for the IOrderRepository port.
+          Pass only if all of these hold:
+          - Expected values are worked out independently as literals (e.g. 2 x 12.50m + 5m = 30.00m, "cust-1",
+            "Confirmed"), never computed by production code (OrderSummary.From, Order.Total, LineTotal) or a copy of its
+            formula, and no assertion only restates a stubbed return value or the arranged input object.
+          - The test data can expose a wrong total: at least one line with a quantity above 1, and more than one line.
+          - The summary's id is tied to the stored order (e.g. captured from the AddAsync call), and no change is made to
+            production code.
+          - Test names follow Method_ExpectedBehavior_Scenario; assertions use AwesomeAssertions; no logic in tests;
+            TestContext.Current.CancellationToken is passed.
           Score 0-1 by the share of points satisfied.
 
   - description: cancel-order (realistic feature)
