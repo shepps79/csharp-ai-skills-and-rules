@@ -17,7 +17,7 @@ export CLAUDE_CONFIG_DIR=~/.claude-<profile>
 npm ci --ignore-scripts
 npm run eval -- --repeat 5                                   # your working-tree rules only
 npm run eval -- --filter-pattern cancel-order                # one task
-npm run eval-baseline -- --repeat 5                          # every variant, incl. none and env
+npm run eval-baseline -- --repeat 5                          # every variant, incl. none
 npm run eval-pairwise                                        # judge picks rules@HEAD or rules@WORKTREE per task
 PAIRWISE_SWAP=1 npm run eval-pairwise                        # the same with the order swapped
 npm run view                                                 # local results UI
@@ -46,11 +46,11 @@ In `npm run view`, each provider column shows its pass rate and a score per name
 | Label            | Global setup (CLAUDE.md, RTK, ponytail, plugins) | Repo `.claude/`          |
 |------------------|--------------------------------------------------|--------------------------|
 | `none`           | off                                              | none                     |
-| `env`            | on                                               | none                     |
 | `rules@WORKTREE` | on                                               | your working tree        |
 
-`rules@HEAD` (committed rules run alongside, as a same-session control) is commented out of the provider list;
-restore it with `{ variant: rules, rulesRef: HEAD }` when you need a side-by-side check.
+Two more variants are out of the provider list until needed: `rules@HEAD` (committed rules run alongside, as a
+same-session control), restored with `{ variant: rules, rulesRef: HEAD }`, and `env` (global setup on, no repo
+`.claude/`, to separate the global setup's effect from the rules'), restored with `{ variant: env }`.
 
 **Ablation.** `config.excludeRules` drops rule files from a `rules` variant, e.g.
 `{ variant: rules, rulesRef: WORKTREE, excludeRules: [testing.md] }` with label `rules-testing.md`. Run each file out in

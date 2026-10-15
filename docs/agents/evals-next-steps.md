@@ -1,7 +1,7 @@
 # Evals: next steps
 
 The eval harness in `evals/` (see `evals/README.md`) runs Claude Code headless against a .NET fixture
-for each variant (`none`, `env`, `rules@WORKTREE`) and grades the result with deterministic
+for each variant (`none`, `rules@WORKTREE`) and grades the result with deterministic
 checks, hidden acceptance tests and a local `claude -p` judge. Everything stays local; promptfoo telemetry and sharing are off.
 
 ## Current state
@@ -19,13 +19,14 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 - Ablation (`config.excludeRules`), pairwise judging (`npm run eval-pairwise`), a cross-eval fingerprint guard
   (`npm run report -- <id> <id>` exits 1 on a mismatch) and per-variant turns, tokens, cost and minutes are in place.
 - `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
+  `env` (global setup, no repo rules) is removed too; restore it with `{ variant: env }` when needed.
 - The checks, judge prompt, fixture analyzers and tasks changed on 2026-10-15; results graded before then, including
   baseline `eval-PHZ-2026-10-15T12:05:05`, aren't comparable.
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 8 tasks × 3 variants × 5 = 120 agent
-   runs; at the last baseline's cost per run, roughly $20 and 1.5–2 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 8 tasks × 2 variants × 5 = 80 agent
+   runs; at the last baseline's cost per run, roughly $15 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
    `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
@@ -67,4 +68,4 @@ errors; copy both into any .NET repo (the analyzers need central package managem
 - Single runs are noisy. Use `--repeat 5` or more; differences under about 7–15 points are noise at that size,
   and repeats often produce byte-identical code, so confirm a gain with a second eval.
 - The global setup (RTK, ponytail, CLAUDE.md and its imports, skills, agents, commands, plugin contents) is
-  deliberately part of the `env` and `rules@*` variants. If it changes, the fingerprint changes and the baseline must be re-run.
+  deliberately part of the `rules@*` variants (and `env` when restored). If it changes, the fingerprint changes and the baseline must be re-run.

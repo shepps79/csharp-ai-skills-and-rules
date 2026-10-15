@@ -5,14 +5,12 @@ prompts:
   - raw: '{{task}}'
     label: Agent task
 
-# rules@HEAD (committed rules, as a same-run control) can be restored with { variant: rules, rulesRef: HEAD }.
+# Restorable when needed: rules@HEAD (committed rules, as a same-run control) with { variant: rules, rulesRef: HEAD },
+# and env (global setup, no repo rules) with { variant: env }.
 providers:
   - id: file://providers/claude-code.js
     label: none
     config: { variant: none }
-  - id: file://providers/claude-code.js
-    label: env
-    config: { variant: env }
   - id: file://providers/claude-code.js
     label: rules@WORKTREE
     config: { variant: rules, rulesRef: WORKTREE }
