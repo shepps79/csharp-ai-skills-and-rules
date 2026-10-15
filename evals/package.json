@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "description": "Local evals for this repo's Claude Code rules and skills",
+  "scripts": {
+    "promptfoo": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=1 PROMPTFOO_CONFIG_DIR=./.promptfoo promptfoo",
+    "eval": "npm run promptfoo -- eval --no-cache --no-share",
+    "view": "npm run promptfoo -- view --yes"
+  },
+  "devDependencies": {
+    "promptfoo": "0.123.1"
+  }
+}
