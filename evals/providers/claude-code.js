@@ -37,7 +37,8 @@ class ClaudeCodeProvider {
     const diff = git(runDir, 'diff', '--cached', 'HEAD');
 
     return {
-      output: diff || '(no changes)',
+      // Fenced so the results UI's "Render markdown" setting shows it as a highlighted diff.
+      output: diff ? `\`\`\`diff\n${diff}\n\`\`\`` : '(no changes)',
       cost: result.total_cost_usd,
       tokenUsage: tokenUsage(result.usage),
       metadata: {

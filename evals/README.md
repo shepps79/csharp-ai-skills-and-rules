@@ -48,6 +48,16 @@ rules aren't picked up from a parent directory. The agent runs in `auto` permiss
 Every result records a `fingerprint` (Claude Code, model, plugins, global config hashes, RTK, dotnet).
 Only compare results with the same fingerprint hash; if your global setup changed, re-run the baseline.
 
+## Reading the code
+
+A result's output is the git diff of everything the agent changed. A cell is PASS when every check and the judge passed.
+
+- In `npm run view`, turn on "Render markdown" in the table settings and click a cell to read the highlighted diff,
+  each check's reason and the judge's explanation. `metadata.runDir` is listed there too.
+- To browse the full solution, open the run dir: `ls -td ${TMPDIR:-/tmp}/csharp-skills-evals/*/repo | head` (newest first), then
+  `code <dir>` or `git -C <dir> diff --cached HEAD`. `transcript.jsonl` beside it shows how the agent got there.
+  Run dirs live in the temp folder, so they disappear when the machine restarts.
+
 ## Grading
 
 - `graders/checks.js`: deterministic checks on build, tests and the files the agent changed.
