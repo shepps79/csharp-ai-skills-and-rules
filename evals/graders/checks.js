@@ -171,6 +171,24 @@ module.exports = {
     return result(outside.length === 0, outside.length ? `projects outside src/: ${outside.join(', ')}` : 'ok');
   },
 
+  // testing.md: every test project references both coverlet packages, versioned centrally.
+  coverletPackages: (_, { metadata }) => {
+    const packages = ['coverlet.collector', 'coverlet.msbuild'];
+    const references = (content, item) => packages.filter((name) => new RegExp(`<${item}\\s+Include="${name}"`, 'i').test(content));
+    const testProjects = metadata.changedFiles.filter((file) => file.endsWith('.csproj'))
+      .filter((file) => /Microsoft\.NET\.Test\.Sdk|xunit/i.test(read(metadata, file)));
+    const versions = fs.existsSync(path.join(metadata.runDir, 'Directory.Packages.props'))
+      ? references(read(metadata, 'Directory.Packages.props'), 'PackageVersion')
+      : [];
+    const problems = [
+      ...(testProjects.length ? [] : ['no test projects']),
+      ...testProjects.flatMap((file) => packages.filter((name) => !references(read(metadata, file), 'PackageReference').includes(name))
+        .map((name) => `${file} doesn't reference ${name}`)),
+      ...packages.filter((name) => !versions.includes(name)).map((name) => `no PackageVersion for ${name}`),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : `${testProjects.length} test projects`);
+  },
+
   functionalLibrary: (_, context) => {
     const used = matchingFiles(context, (file) => file === 'Directory.Packages.props', /CSharpFunctionalExtensions/)
       .length > 0;
