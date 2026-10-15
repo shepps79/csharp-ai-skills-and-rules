@@ -100,8 +100,9 @@ npm run report -- <baseline-id> <eval-id>   # several evals; exits 1 if their fi
 ```
 
 Prints a quality % per variant, overall and per task, and the mean turns, tokens, cost and minutes per run: the same
-quality at lower cost is a win too. Each run's quality is the weighted mean of its checks (build, tests, acceptance and
-judge weigh 3; each rule check 1; the judge's and coverage's scores are fractional), and is 0 when the build fails.
+quality at lower cost is a win too. Each run's quality is the weighted mean of its checks (build, tests, acceptance,
+planted mutants and judge weigh 3; each rule check 1; the judge's, coverage's and mutants' scores are fractional), and is
+0 when the build fails.
 "all checks pass" is the stricter share of runs where nothing failed. Runs that errored (agent never ran, timed out)
 are counted under "run errors" and left out of both percentages. The `fingerprint` line lists the environment hashes;
 the report exits 1 when the evals it prints have more than one.
@@ -121,6 +122,11 @@ the report exits 1 when the evals it prints have more than one.
   copies `acceptance/<fixture>/` and `acceptance/<vars.acceptance>/` over the run dir and runs `dotnet test` on each
   project in them. `acceptance/orders` holds NetArchTest architecture tests (layer dependencies, sealed classes);
   `acceptance/order-limits` tests that task's HTTP contract.
+- `mutants/`: known bugs planted in fixture code. With `vars.mutants: <name>`, after the agent's tests run the provider
+  applies each `find`/`replace` in `mutants/<name>.json` in turn, rebuilds and reruns the agent's tests;
+  `killsPlantedMutants` scores the share that turn them red. Tautological tests (expected values from production code,
+  stubbed values echoed back) stay green under every mutant. Each mutant must survive the fixture's own tests, or it
+  measures nothing.
 - `llm-rubric`: a local `claude -p` judge (`providers/judge.js`) with no tools, plugins, hooks or CLAUDE.md.
   The rubric text in `promptfooconfig.yaml` is the yardstick, so don't edit it in the same change as the rules.
 
@@ -131,4 +137,6 @@ Single runs are noisy. Use `--repeat 5` or more, and treat differences smaller t
 1. Add a test to `promptfooconfig.yaml` with the task text in `vars.task`, the checks that apply, and a rubric.
 2. If the task text fixes a contract (an HTTP route, a public method), add hidden tests for it under
    `acceptance/<name>/src/<Project>/` and set `vars.acceptance: <name>`.
-3. Add a fixture under `fixtures/` only if `orders` (existing service) or `empty` (greenfield) can't host the task.
+3. To grade whether the agent's tests check behaviour (not just exercise it), add bugs to the fixture code they cover
+   in `mutants/<name>.json` and set `vars.mutants: <name>`. A mutant must compile and survive the fixture's own tests.
+4. Add a fixture under `fixtures/` only if `orders` (existing service) or `empty` (greenfield) can't host the task.

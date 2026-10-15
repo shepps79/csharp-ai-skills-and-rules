@@ -48,7 +48,7 @@ class ClaudeCodeProvider {
       metadata: {
         runDir,
         changedFiles,
-        dotnet: buildAndTest(runDir, [context.vars.fixture, context.vars.acceptance]),
+        dotnet: buildAndTest(runDir, context.vars),
         agent: summariseTranscript(events, result),
         fingerprint: fingerprint(events, this.config),
       },
@@ -131,8 +131,9 @@ function stageAndListChanges(runDir) {
   return git(runDir, 'diff', '--cached', '--name-only', '--diff-filter=d', 'HEAD').split('\n').filter(Boolean);
 }
 
-// Builds and tests the agent's work, then the hidden acceptance tests in acceptance/<name> for each given name.
-function buildAndTest(runDir, acceptanceNames) {
+// Builds and tests the agent's work, reruns its tests against the planted mutants in mutants/<vars.mutants>.json,
+// then runs the hidden acceptance tests in acceptance/<fixture> and acceptance/<vars.acceptance>.
+function buildAndTest(runDir, { fixture, acceptance, mutants }) {
   const build = dotnet(runDir, ['build', '-warnaserror']);
   if (!build.ok) {
     return { buildOk: false, testsOk: false, passed: 0, failed: 0, coverage: null, acceptance: null, log: build.log.slice(-4000) };
@@ -143,9 +144,36 @@ function buildAndTest(runDir, acceptanceNames) {
     testsOk: test.ok,
     ...testCounts(test.log),
     coverage: lineCoverage(runDir),
-    acceptance: acceptanceTests(runDir, acceptanceNames),
+    mutants: plantedMutants(runDir, mutants),
+    acceptance: acceptanceTests(runDir, [fixture, acceptance]),
     log: test.log.slice(-4000),
   };
+}
+
+// Known bugs patched into fixture code one at a time: a test suite that stays green under one never checked that
+// behaviour, which is what a tautological test (expected value from production code, stubbed value echoed) does.
+function plantedMutants(runDir, name) {
+  if (!name) {
+    return null;
+  }
+  const mutants = JSON.parse(fs.readFileSync(path.join(EVALS, 'mutants', `${name}.json`), 'utf8'));
+  return mutants.map(({ name: mutant, file, find, replace }) => {
+    const target = path.join(runDir, file);
+    const original = fs.readFileSync(target, 'utf8');
+    if (original.split(find).length !== 2) {
+      return { name: mutant, killed: false, error: `${file} no longer contains the mutated code once` };
+    }
+    fs.writeFileSync(target, original.replace(find, replace));
+    try {
+      const build = dotnet(runDir, ['build']);
+      if (!build.ok) {
+        return { name: mutant, killed: false, error: 'mutant does not compile', log: build.log.slice(-2000) };
+      }
+      return { name: mutant, killed: !dotnet(runDir, ['test', '--no-build']).ok };
+    } finally {
+      fs.writeFileSync(target, original);
+    }
+  });
 }
 
 // Copied in only after the agent's diff and coverage are taken, so the agent never sees them and they don't count.
