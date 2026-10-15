@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const isTestFile = (file) => /Tests?\//.test(file) || /Tests?\.cs$/.test(file);
 const isCSharp = (file) => file.endsWith('.cs');
+const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
 
 module.exports = {
   build: (_, { metadata }) => result(metadata.dotnet.buildOk, 'dotnet build -warnaserror', metadata.dotnet.log),
@@ -29,20 +30,25 @@ module.exports = {
     noMatches(context, () => true, /InternalsVisibleTo/, 'InternalsVisibleTo exposes internals to tests'),
 
   fileScopedNamespaces: (_, context) =>
-    noMatches(context, isCSharp, /^namespace\s+[\w.]+\s*$/m, 'block-scoped namespace'),
+    noMatches(context, isCSharp, /^namespace\s+[\w.]+\s*(\{|$)/m, 'block-scoped namespace'),
 
   noNullForAbsence: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && !isTestFile(file),
-      /return\s+null\s*;|=>\s*null\s*;|Task<[A-Z]\w*\?>/, 'null used to model absence'),
+      /return\s+null\s*;|=>\s*null\s*;|Task<\w+\?>|\b\w+\?\s+\w+\s*\(/, 'null used to model absence'),
 
   usesMaybe: (_, context) => {
     const hits = matchingFiles(context, (file) => isCSharp(file) && !isTestFile(file), /Maybe<\w+>/);
     return result(hits.length > 0, hits.length ? `Maybe<T> in ${hits.join(', ')}` : 'no Maybe<T> in production code');
   },
 
-  noThrowInDomain: (_, context) =>
-    noMatches(context, (file) => isCSharp(file) && /\.Domain\//.test(file), /\bthrow\b/,
-      'domain throws for an expected business failure'),
+  // A throwing discard arm is allowed: the compiler (CS8524) and dotnet.md demand one on exhaustive enum switches.
+  noThrowInDomain: (_, context) => {
+    const throws = (code) => /\bthrow\b/.test(stripComments(code).replace(/(\b_\s*=>|default\s*:)\s*throw\b/g, ''));
+    const hits = context.metadata.changedFiles
+      .filter((file) => isCSharp(file) && /\.Domain\//.test(file))
+      .filter((file) => throws(read(context.metadata, file)));
+    return result(hits.length === 0, hits.length ? `domain throws for an expected business failure: ${hits.join(', ')}` : 'ok');
+  },
 
   centralPackageManagement: (_, context) => {
     const enabled = matchingFiles(context, (file) => file === 'Directory.Packages.props',
@@ -70,6 +76,8 @@ module.exports = {
       ...(domain.length ? [] : ['no *.Domain project']),
       ...(application.length ? [] : ['no *.Application project']),
       ...domain.flatMap((file) => references(file).map((ref) => `${file} references ${ref}`)),
+      ...domain.filter((file) => /Include="Microsoft\.(AspNetCore|EntityFrameworkCore)/.test(read(metadata, file)))
+        .map((file) => `${file} depends on a framework package`),
       ...application.flatMap((file) => references(file).filter((ref) => !/\.Domain\.csproj$/.test(ref))
         .map((ref) => `${file} references ${ref}`)),
     ];
@@ -77,7 +85,7 @@ module.exports = {
   },
 
   testsUnderSrc: (_, { metadata }) => {
-    const outside = metadata.changedFiles.filter((file) => file.endsWith('.csproj') && !file.startsWith('src/'));
+    const outside = metadata.changedFiles.filter((file) => file.endsWith('.csproj') && !/^src\/[^/]+\/[^/]+$/.test(file));
     return result(outside.length === 0, outside.length ? `projects outside src/: ${outside.join(', ')}` : 'ok');
   },
 
@@ -88,7 +96,7 @@ module.exports = {
   },
 
   sealedTestClasses: (_, context) =>
-    noMatches(context, (file) => isCSharp(file) && isTestFile(file), /public\s+class\s+\w+Tests\b/,
+    noMatches(context, (file) => isCSharp(file) && isTestFile(file), /^(?!.*\b(sealed|static|abstract)\b).*\bclass\s+\w+Tests?\b/m,
       'test class not sealed'),
 
   testCancellationToken: (_, context) =>
