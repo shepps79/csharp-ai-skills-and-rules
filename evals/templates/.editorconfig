@@ -43,6 +43,9 @@ dotnet_diagnostic.IDE0082.severity = warning
 dotnet_diagnostic.IDE0001.severity = warning
 dotnet_diagnostic.IDE0002.severity = warning
 
+# Whitespace formatting fails the build, so agents see it without running `dotnet format`.
+dotnet_diagnostic.IDE0055.severity = warning
+
 # Unused usings (dotnet.md: General Principles)
 dotnet_diagnostic.IDE0005.severity = warning
 
