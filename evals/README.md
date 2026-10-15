@@ -6,6 +6,13 @@ remote generation are switched off in `package.json`, and results stay in `evals
 
 ## Run
 
+Runs use whichever Claude Code config the shell points at. If you log in through a non-default config dir, export it
+first, or every run errors with "Not logged in":
+
+```bash
+export CLAUDE_CONFIG_DIR=~/.claude-<profile>
+```
+
 ```bash
 npm ci --ignore-scripts
 npm run eval -- --repeat 5                                   # every task × every variant

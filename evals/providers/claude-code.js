@@ -28,9 +28,13 @@ class ClaudeCodeProvider {
   async callApi(prompt, context) {
     const runDir = createRunDir(context.vars.fixture, this.config);
     const events = await runAgent(prompt, runDir, this.config);
+    const result = events.find((e) => e.type === 'result') ?? {};
+    if (result.is_error) {
+      // An agent that never ran (e.g. not logged in) is an ERROR, not a quality FAIL.
+      return { error: `agent failed in ${runDir}: ${result.result}` };
+    }
     const changedFiles = stageAndListChanges(runDir);
     const diff = git(runDir, 'diff', '--cached', 'HEAD');
-    const result = events.find((e) => e.type === 'result') ?? {};
 
     return {
       output: diff || '(no changes)',

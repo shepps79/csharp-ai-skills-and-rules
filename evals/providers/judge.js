@@ -28,7 +28,9 @@ class JudgeProvider {
       child.on('close', (code) => {
         try {
           const result = JSON.parse(stdout);
-          resolve({ output: result.result, cost: result.total_cost_usd });
+          resolve(result.is_error
+            ? { error: `judge failed: ${result.result}` }
+            : { output: result.result, cost: result.total_cost_usd });
         } catch {
           resolve({ error: `judge exited ${code}: ${stderr.slice(-2000) || stdout.slice(-2000)}` });
         }
