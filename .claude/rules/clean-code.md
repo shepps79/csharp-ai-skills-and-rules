@@ -6,7 +6,7 @@ A comprehensive guide to writing clean, maintainable, and readable code based on
 
 Provide guidelines for writing code that prioritizes readability, simplicity, and maintainability over cleverness or optimization.
 
-*Applies to:* All software development projects, code reviews, refactoring efforts
+*Applies to:* All C# / .NET projects, code reviews, refactoring efforts
 *Level:* Tactical/Operational - direct application in daily coding practices
 *Audience:* All developers, from junior to senior levels
 
@@ -30,7 +30,7 @@ Provide guidelines for writing code that prioritizes readability, simplicity, an
 
 ### Should Have (Important)
 
-- *RULE-101:* Functions should have no more than 3 parameters; use objects for more complex parameter sets
+- *RULE-101:* Functions should have no more than 3 parameters; use a parameter object (e.g. a `record`) for more complex parameter sets
 - *RULE-102:* Avoid deep nesting (>3 levels) - extract methods or use early returns
 - *RULE-103:* Write self-documenting code that reduces need for comments
 - *RULE-104:* Use intention-revealing names rather than mental mapping (avoid single-letter variables except for short loops)
@@ -42,40 +42,43 @@ Provide guidelines for writing code that prioritizes readability, simplicity, an
 - *RULE-202:* Use descriptive error messages and proper exception handling
 - *RULE-203:* Order functions by level of abstraction (high-level first, details later)
 - *RULE-204:* Minimize dependencies between modules and classes
-- *RULE-205:* Use consistent verb/noun naming conventions (getUser, calculateTotal, isValid)
+- *RULE-205:* Use consistent verb/noun naming conventions (GetUser, CalculateTotal, IsValid)
 
 ## Patterns & Anti-Patterns
 
 ### ✅ Do This
 
-```javascript
-function calculateMonthlyPayment(principal, interestRate, termInYears) {
-    const monthlyRate = interestRate / 12;
-    const numberOfPayments = termInYears * 12;
+```csharp
+public static double CalculateMonthlyPayment(double principal, double interestRate, int termInYears)
+{
+    var monthlyRate = interestRate / 12;
+    var numberOfPayments = termInYears * 12;
 
-    return (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -numberOfPayments));
+    return principal * monthlyRate / (1 - Math.Pow(1 + monthlyRate, -numberOfPayments));
 }
 
-const userAccount = {
-    id: userId,
-    email: userEmail,
-    isActive: true
+var userAccount = new
+{
+    Id = userId,
+    Email = userEmail,
+    IsActive = true
 };
 ```
 
 ### ❌ Don't Do This
 
-```javascript
-function calc(p, r, t) {
+```csharp
+public static double Calc(double p, double r, int t)
+{
     // Calculate monthly payment
-    let mr = r / 12;
-    let n = t * 12;
-    return (p * mr) / (1 - Math.pow(1 + mr, -n));
+    var mr = r / 12;
+    var n = t * 12;
+    return p * mr / (1 - Math.Pow(1 + mr, -n));
 }
 
 // TODO: fix this later
-// const oldUserData = getUser(id);
-const u = { id: uid, e: ue, a: true };
+// var oldUserData = GetUser(id);
+var u = new { Id = uid, E = ue, A = true };
 ```
 
 ## Decision Framework
@@ -104,7 +107,7 @@ const u = { id: uid, e: ue, a: true };
 
 ## Quality Gates
 
-- *Automated checks:* Linting rules for naming conventions, function length, complexity metrics
+- *Automated checks:* Roslyn analyzers and `.editorconfig` rules for naming conventions, function length, complexity metrics
 - *Code review focus:* Readability, naming clarity, function size, duplication elimination
 - *Testing requirements:* Unit tests must be as clean and readable as production code
 
