@@ -19,7 +19,10 @@ npm run eval -- --repeat 5                                   # committed rules v
 npm run eval -- --filter-pattern cancel-order                # one task
 npm run eval-baseline -- --repeat 5                          # every variant, incl. none and env
 npm run view                                                 # local results UI
+npm run clean                                                # delete ALL results and run dirs, baseline included
 ```
+
+`clean` refuses while an eval is running. Restart `npm run view` afterwards, as it holds the deleted results open.
 
 Run `eval-baseline` first, and again whenever the fingerprint changes (Claude Code, model, plugins, RTK, global
 CLAUDE.md). Day to day, `eval` runs only the `rules@` variants. Its provider filter is fixed: a second
