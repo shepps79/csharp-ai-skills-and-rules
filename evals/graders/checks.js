@@ -14,9 +14,11 @@ module.exports = {
     return result(testsOk, `${passed} passed, ${failed} failed`);
   },
 
-  testsAdded: (_, { metadata, config }) => {
+  // Counts test attributes the diff adds (the fixture's own tests don't count); the tests check proves they pass.
+  testsAdded: (output, { config }) => {
     const minimum = config?.minimum ?? 3;
-    return result(metadata.dotnet.passed >= minimum, `${metadata.dotnet.passed} passing tests, need ${minimum}`);
+    const added = (output.match(/^\+\s*\[(Fact|Theory)\b(?![^\]]*Skip)/gm) ?? []).length;
+    return result(added >= minimum, `${added} tests added, need ${minimum}`);
   },
 
   centralPackageVersions: (_, context) =>
