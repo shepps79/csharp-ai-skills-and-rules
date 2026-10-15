@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: csharp-skills rules and skills
+
+prompts:
+  - '{{task}}'
+
+# Narrow with --filter-providers, e.g. 'rules@' to compare committed rules against your uncommitted edits.
+providers:
+  - id: file://providers/claude-code.js
+    label: none
+    config: { variant: none }
+  - id: file://providers/claude-code.js
+    label: env
+    config: { variant: env }
+  - id: file://providers/claude-code.js
+    label: rules@HEAD
+    config: { variant: rules, rulesRef: HEAD }
+  - id: file://providers/claude-code.js
+    label: rules@WORKTREE
+    config: { variant: rules, rulesRef: WORKTREE }
+
+evaluateOptions:
+  # Each run is a full agent session plus a dotnet build; more than this starves the machine.
+  maxConcurrency: 2
+
+defaultTest:
+  vars:
+    fixture: orders
+  options:
+    provider: file://providers/judge.js
+  assert:
+    - { type: javascript, value: file://graders/checks.js:build, metric: build }
+    - { type: javascript, value: file://graders/checks.js:tests, metric: tests }
+    - { type: javascript, value: file://graders/checks.js:centralPackageVersions, metric: central-packages }
+    - { type: javascript, value: file://graders/checks.js:noInternalsVisibleTo, metric: no-internals-visible-to }
+    - { type: javascript, value: file://graders/checks.js:fileScopedNamespaces, metric: file-scoped-namespaces }
+    - { type: javascript, value: file://graders/checks.js:sealedTestClasses, metric: sealed-test-classes }
+    - { type: javascript, value: file://graders/checks.js:testCancellationToken, metric: test-cancellation-token }
+
+# The rubrics are the fixed yardstick: they must not change when the rules under test change.
+tests:
+  - description: find-order (trap — tempts a nullable return)
+    vars:
+      task: file://tasks/find-order.md
+    assert:
+      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - Absence is modelled explicitly with Maybe<Order> (CSharpFunctionalExtensions), not a nullable return.
+          - The lookup is added to the IOrderRepository port, implemented in the in-memory adapter, and exposed by OrderService.
+          - Tests cover both the found and not-found cases through public APIs only.
+          - Names reveal intent, there is no speculative code, and async methods take and pass a CancellationToken.
+          Score 0-1 by the share of points satisfied.
+
+  - description: place-order-tests (conflict — mocks vs Testcontainers)
+    vars:
+      task: file://tasks/place-order-tests.md
+    assert:
+      - { type: javascript, value: file://graders/checks.js:noTestcontainers, metric: no-testcontainers }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        value: |
+          The output is a git diff adding unit tests for OrderService.PlaceOrderAsync in a C# xUnit v3 project.
+          Pass only if all of these hold:
+          - Only the IOrderRepository port is faked (Moq or the in-memory adapter); no real infrastructure or containers.
+          - Tests cover success and each failure path (missing customer, no items) and verify the order is persisted only on success.
+          - Test names follow Method_ExpectedBehavior_Scenario; assertions use AwesomeAssertions; no logic in tests.
+          - Tests check observable outcomes, not implementation details.
+          Score 0-1 by the share of points satisfied.
+
+  - description: cancel-order (realistic feature)
+    vars:
+      task: file://tasks/cancel-order.md
+    assert:
+      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - The cancellation rule lives in the Order aggregate and returns a Result rather than throwing.
+          - OrderService loads the order through the repository port, treats a missing order as a failure Result, and composes steps without null checks.
+          - Tests cover pending, confirmed, already-cancelled and missing-order cases.
+          - Names reveal intent, there is no speculative code or duplication, and members follow the usual C# ordering.
+          Score 0-1 by the share of points satisfied.
