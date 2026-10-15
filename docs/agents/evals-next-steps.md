@@ -15,7 +15,7 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 
 ## Next steps, in order
 
-1. **Record a baseline.** `npm run eval -- --repeat 5 --description baseline` from `evals/`. Note the
+1. **Record a baseline.** `npm run eval-baseline -- --repeat 5` from `evals/`. Note the
    fingerprint hash and the per-metric pass rate for each variant. `none` against `env` shows what your
    global setup adds; `env` against `rules@HEAD` shows what the repo rules add.
 2. **Ablation.** Add a provider option that drops one rule file (e.g. `config.excludeRules: [testing.md]`)

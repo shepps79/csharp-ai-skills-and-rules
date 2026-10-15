@@ -15,16 +15,21 @@ export CLAUDE_CONFIG_DIR=~/.claude-<profile>
 
 ```bash
 npm ci --ignore-scripts
-npm run eval -- --repeat 5                                   # every task × every variant
-npm run eval -- --filter-providers 'rules@' --repeat 5       # committed rules vs your uncommitted edits
+npm run eval -- --repeat 5                                   # committed rules vs your uncommitted edits
 npm run eval -- --filter-pattern cancel-order                # one task
+npm run eval-baseline -- --repeat 5                          # every variant, incl. none and env
 npm run view                                                 # local results UI
 ```
 
-Label runs so they're easy to find and compare in the UI:
+Run `eval-baseline` first, and again whenever the fingerprint changes (Claude Code, model, plugins, RTK, global
+CLAUDE.md). Day to day, `eval` runs only the `rules@` variants. Its provider filter is fixed: a second
+`--filter-providers` is ignored, so for any other selection call promptfoo directly, e.g.
+`npm run promptfoo -- eval --no-cache --no-share --filter-providers WORKTREE`.
+
+Label runs so they're easy to find and compare in the UI (`eval-baseline` is labelled "baseline" unless you override it):
 
 ```bash
-npm run eval -- --filter-providers 'rules@' --repeat 5 --description "testing.md: drop TestContainers line"
+npm run eval -- --repeat 5 --description "testing.md: drop TestContainers line"
 ```
 
 In `npm run view`, each provider column shows its pass rate and a score per named metric (`build`, `uses-maybe`,
