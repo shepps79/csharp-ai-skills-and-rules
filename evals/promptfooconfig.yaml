@@ -141,6 +141,8 @@ tests:
     assert:
       - *acceptance
       - { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
+      - &typedHttpClient { type: javascript, value: file://graders/checks.js:typedHttpClient, metric: typed-http-client }
+      - &httpResilience { type: javascript, value: file://graders/checks.js:httpResilience, metric: http-resilience }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
       - type: llm-rubric
@@ -227,6 +229,37 @@ tests:
           - Unit tests control time with FakeTimeProvider (Microsoft.Extensions.TimeProvider.Testing, versioned in
             Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00.
           - Names reveal intent and there is no speculative code.
+          Score 0-1 by the share of points satisfied.
+
+  - description: customer-name (HttpClient — typed client from IHttpClientFactory; hidden acceptance tests)
+    vars:
+      acceptance: customer-name
+      task: |
+        The order returned by `POST /orders` must include the customer's display name as `customerName`, fetched from
+        the customer service: `GET /customers/{customerId}` on the base URL in configuration (`Customers:BaseUrl`),
+        which returns JSON like `{ "name": "Ada Lovelace" }`. If the customer service returns 404 Not Found, reject the
+        order with 400 Bad Request. Add tests.
+    assert:
+      - *acceptance
+      - *typedHttpClient
+      - *httpResilience
+      - { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - A capability-named outbound port in Application (e.g. ICustomerDirectory) is implemented by an Infrastructure
+            adapter that takes HttpClient in its constructor, registered once as a typed client with
+            AddHttpClient<TPort, TAdapter> in the composition root, base address from configuration. No `new HttpClient`,
+            no IHttpClientFactory.CreateClient, no second registration of the adapter, and no HttpClient held in a singleton.
+          - The client has AddStandardResilienceHandler (Microsoft.Extensions.Http.Resilience, versioned in
+            Directory.Packages.props); responses are disposed and the CancellationToken flows into every HTTP call.
+          - A 404 becomes a failure Result that the endpoint maps to 400; no HTTP exception crosses the port.
+          - Tests stub the HTTP boundary (an HttpMessageHandler, or the port faked for the service), and the existing
+            endpoint tests are updated so no test calls a real network.
           Score 0-1 by the share of points satisfied.
 
   - description: greenfield-inventory (new service from an empty repo)
