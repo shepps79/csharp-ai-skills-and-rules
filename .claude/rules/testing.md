@@ -11,6 +11,10 @@
 | **Moq** | Mocking dependencies (ports/interfaces) |
 | **TestContainers** | Real infrastructure in integration tests |
 | **WebApplicationFactory** | Integration tests for Presentation-layer (minimal API) endpoints |
+| **coverlet.collector** | Line and branch coverage with `dotnet test --collect "XPlat Code Coverage"` |
+| **coverlet.msbuild** | Coverage thresholds that fail the test run (`/p:CollectCoverage=true /p:Threshold=80`) |
+
+Every test project references both coverlet packages (versions in `Directory.Packages.props`).
 
 ## Test Only Public Interfaces
 
@@ -376,8 +380,11 @@ public async Task CreateUserAsync_MakesUserRetrievable()
 # Run all tests
 dotnet test
 
-# Run with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Run with coverage (Cobertura XML per test project under TestResults/)
+dotnet test --collect "XPlat Code Coverage"
+
+# Fail when a test project's line coverage drops below 80%
+dotnet test /p:CollectCoverage=true /p:Threshold=80 /p:ThresholdType=line
 
 # Run a specific project
 dotnet test tests/MyService.UnitTests/
