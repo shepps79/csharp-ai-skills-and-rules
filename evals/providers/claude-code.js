@@ -95,13 +95,20 @@ function runAgent(prompt, runDir, { variant, model }) {
 
   const transcriptPath = path.join(runDir, '..', 'transcript.jsonl');
   return new Promise((resolve, reject) => {
-    const child = spawn('claude', args, { cwd: runDir, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    // Own process group, so a timeout also kills what the agent started (dotnet build servers, test hosts).
+    const child = spawn('claude', args, { cwd: runDir, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     const transcript = fs.createWriteStream(transcriptPath);
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; transcript.write(chunk); });
     child.stderr.on('data', (chunk) => { stderr += chunk; });
-    const timer = setTimeout(() => child.kill('SIGTERM'), AGENT_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-child.pid, 'SIGTERM');
+      } catch {
+        // The group already exited.
+      }
+    }, AGENT_TIMEOUT_MS);
     child.on('error', reject);
     child.on('close', (code) => {
       clearTimeout(timer);
