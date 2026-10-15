@@ -149,3 +149,17 @@ test('coverletPackages requires both packages in every test project, versioned c
   assert.equal(passes('coverletPackages', { 'src/X.UnitTests/X.UnitTests.csproj': project(both) }), false);
   assert.equal(passes('coverletPackages', { ...props, 'src/X.Domain/X.Domain.csproj': '<Project />' }), false);
 });
+
+test('noSystemClock fails production code that reads the clock directly', () => {
+  assert.equal(passes('noSystemClock', { 'src/X.Application/S.cs': 'var now = DateTime.UtcNow;' }), false);
+  assert.equal(passes('noSystemClock', { 'src/X.Domain/O.cs': 'PlacedAt = DateTimeOffset.Now;' }), false);
+  assert.equal(passes('noSystemClock', { 'src/X.Application/S.cs': 'var now = timeProvider.GetUtcNow();' }), true);
+  assert.equal(passes('noSystemClock', { 'src/X.UnitTests/STests.cs': 'var now = DateTime.UtcNow;' }), true);
+});
+
+test('usesTimeProvider requires the built-in TimeProvider, not a custom clock port', () => {
+  const service = { 'src/X.Application/S.cs': 'public sealed class S(TimeProvider timeProvider);' };
+  assert.equal(passes('usesTimeProvider', service), true);
+  assert.equal(passes('usesTimeProvider', { ...service, 'src/X.Application/IClock.cs': 'public interface IClock;' }), false);
+  assert.equal(passes('usesTimeProvider', { 'src/X.Application/S.cs': 'public sealed class S(ITimeProvider clock);' }), false);
+});

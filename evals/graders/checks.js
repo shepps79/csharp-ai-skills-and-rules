@@ -112,6 +112,23 @@ module.exports = {
     noMatches(context, (file) => isCSharp(file) && isTestFile(file),
       /\(\s*[\w<>]+\?\s*\)\s*null\b|\.Returns(Async)?\(\s*null\b|\.Should\(\)\.BeNull\(\)/, 'test models absence with null'),
 
+  // Reading the system clock mid-logic makes code impure and its tests depend on when they run (dotnet-functional.md).
+  noSystemClock: (_, context) =>
+    noMatches(context, (file) => isCSharp(file) && !isTestFile(file), /\bDateTime(Offset)?\.(Utc)?Now\b|\bDateTime\.Today\b/,
+      'production code reads the system clock'),
+
+  // dotnet.md prefers built-ins: System.TimeProvider over a hand-rolled IClock-style port.
+  usesTimeProvider: (_, context) => {
+    const production = (file) => isCSharp(file) && !isTestFile(file);
+    const uses = matchingFiles(context, production, /\bTimeProvider\b/);
+    const customClocks = matchingFiles(context, production, /\binterface\s+I\w*(Clock|Time|DateTime)\w*/);
+    const problems = [
+      ...(uses.length ? [] : ['no TimeProvider in production code']),
+      ...customClocks.map((file) => `custom clock interface in ${file}`),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : `TimeProvider in ${uses.join(', ')}`);
+  },
+
   // Repo skills (.claude/skills) the task should load; other skills may load too.
   skillsUsed: (_, { metadata, config }) => {
     const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
