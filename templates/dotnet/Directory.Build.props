@@ -10,4 +10,10 @@
     <!-- Required for IDE0005 (unused usings) and CS1591 (missing XML docs) to run at build. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+  <!-- Analyzers for rules the SDK can't check; .editorconfig turns on only the diagnostics the rules ask for.
+       GlobalPackageReference needs central package management, which the rules require. -->
+  <ItemGroup>
+    <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
+    <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
+  </ItemGroup>
 </Project>
