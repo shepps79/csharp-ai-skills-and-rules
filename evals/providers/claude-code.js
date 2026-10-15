@@ -125,8 +125,8 @@ function buildAndTest(runDir) {
   return {
     buildOk: true,
     testsOk: test.ok,
-    passed: sum(/Passed:\s+(\d+)/g),
-    failed: sum(/Failed:\s+(\d+)/g),
+    passed: sum(/(?:passed|succeeded):\s+(\d+)/gi), // VSTest "Passed: n", Testing Platform "succeeded: n"
+    failed: sum(/failed:\s+(\d+)/gi),
     log: test.log.slice(-4000),
   };
 }
