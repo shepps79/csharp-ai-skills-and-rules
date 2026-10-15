@@ -165,19 +165,41 @@ function summariseTranscript(events, result) {
 function fingerprint(events, { variant, model }) {
   const init = events.find((e) => e.subtype === 'init') ?? {};
   const configDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
-  const globalFiles = variant === 'none' ? [] : ['settings.json', 'CLAUDE.md', 'RTK.md']
-    .map((name) => path.join(configDir, name))
-    .filter((file) => fs.existsSync(file))
-    .map((file) => `${path.basename(file)}:${sha(fs.readFileSync(file))}`);
+  const global = (paths) => (variant === 'none' ? [] : paths.filter((file) => fs.existsSync(file))
+    .map((file) => `${path.relative(configDir, file)}:${hashTree(file)}`));
+  const plugins = init.plugins ?? [];
   const parts = {
     claudeCode: init.claude_code_version,
     model: init.model ?? model,
-    plugins: (init.plugins ?? []).map((p) => `${p.name}:${p.path ?? ''}`).sort(),
-    globalFiles,
+    plugins: plugins.map((p) => `${p.name}:${p.path ? hashTree(p.path) : ''}`).sort(),
+    globalFiles: global([path.join(configDir, 'settings.json'), ...withImports(path.join(configDir, 'CLAUDE.md')),
+      ...['skills', 'agents', 'commands'].map((dir) => path.join(configDir, dir))]),
     rtk: variant === 'none' ? null : commandVersion('rtk'),
     dotnet: commandVersion('dotnet'),
   };
   return { hash: sha(JSON.stringify(parts)).slice(0, 12), ...parts };
+}
+
+// A memory file plus every file it pulls in with `@path`, recursively.
+function withImports(file, seen = new Set()) {
+  if (seen.has(file) || !fs.existsSync(file)) {
+    return [];
+  }
+  seen.add(file);
+  const imports = [...fs.readFileSync(file, 'utf8').matchAll(/^@(\S+)/gm)]
+    .map(([, ref]) => path.resolve(path.dirname(file), ref.replace(/^~(?=\/)/, os.homedir())));
+  return [file, ...imports.flatMap((ref) => withImports(ref, seen))];
+}
+
+// Content hash of a file, or of every file under a directory (names included, so renames count).
+function hashTree(target) {
+  if (!fs.statSync(target, { throwIfNoEntry: false })?.isDirectory()) {
+    return fs.existsSync(target) ? sha(fs.readFileSync(target)).slice(0, 12) : 'missing';
+  }
+  const files = fs.readdirSync(target, { recursive: true })
+    .filter((file) => !file.split(path.sep).includes('.git') && fs.statSync(path.join(target, file), { throwIfNoEntry: false })?.isFile())
+    .sort();
+  return sha(files.map((file) => `${file}:${sha(fs.readFileSync(path.join(target, file)))}`).join('\n')).slice(0, 12);
 }
 
 function tokenUsage(usage = {}) {
