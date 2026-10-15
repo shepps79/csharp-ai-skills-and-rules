@@ -216,3 +216,28 @@ test('endpointTestsThroughHost requires the real host and composition root', () 
   assert.equal(passes('endpointTestsThroughHost', tests(`${host}\nbuilder.ConfigureTestServices(s => s.RemoveAll<IOrderRepository>())`), {}, config), false);
   assert.equal(passes('endpointTestsThroughHost', tests('var sut = new OrderService(repository);'), {}, config), false);
 });
+
+test('killsPlantedMutants scores the share of mutants the tests kill', () => {
+  const grade = (mutants) => checks.killsPlantedMutants('', { metadata: { dotnet: { buildOk: true, mutants } } });
+  assert.equal(grade([{ name: 'a', killed: true }, { name: 'b', killed: true }]).pass, true);
+  assert.equal(grade([{ name: 'a', killed: true }, { name: 'b', killed: false }]).score, 0.5);
+  assert.equal(grade([{ name: 'a', killed: false, error: 'mutant does not compile' }]).pass, false);
+  assert.equal(grade(null).pass, false);
+});
+
+test('independentExpectations fails expected values taken from production code or a stub', () => {
+  const production = { 'src/X.Application/OrderSummary.cs': 'public sealed record OrderSummary(Guid Id, decimal Total)' };
+  const tests = (body) => ({
+    ...production,
+    'src/X.UnitTests/STests.cs': `[Fact]\n    public async Task A_B()\n    {\n${body}\n    }\n`,
+  });
+  const independent = (body) => passes('independentExpectations', tests(body));
+  assert.equal(independent('result.Value.Should().Be(OrderSummary.From(order));'), false);
+  assert.equal(independent('result.Should().Be(Maybe.From(OrderSummary.From(order)));'), false);
+  assert.equal(independent('result.Value.Total.Should().Be(lines.Sum(l => l.Quantity * l.UnitPrice));'), false);
+  assert.equal(independent('result.Value.Total.Should().Be(quantity * unitPrice);'), false);
+  assert.equal(independent('_repository.Setup(r => r.FindAsync(id, ct))\n.ReturnsAsync(Maybe.From(order));\nresult.Value.Should().BeSameAs(order);'), false);
+  assert.equal(independent('result.Value.Total.Should().Be(25.00m);\nresult.Value.Should().Be(new OrderSummary(id, 2 * 12.50m));'), true);
+  assert.equal(independent('await repository.AddAsync(order, ct);\nresult.Value.Should().BeSameAs(order);'), true);
+  assert.equal(independent('response.Headers.Location.Should().Be("/orders/abc");\n_x.Setup(x => x.Ok()).Returns(true);\nok.Should().Be(true);'), true);
+});

@@ -35,6 +35,20 @@ module.exports = {
     return result(acceptance.ok, `${acceptance.passed} passed, ${acceptance.failed} failed`, acceptance.log);
   },
 
+  // The agent's tests rerun against known bugs planted in fixture code (provider, mutants/<vars.mutants>.json); each
+  // bug they stay green under is behaviour they never checked. Scored by the share killed.
+  killsPlantedMutants: (_, { metadata }) => {
+    const { mutants, buildOk } = metadata.dotnet;
+    if (!mutants) {
+      return result(false, buildOk ? 'no planted mutants for this task' : 'build failed');
+    }
+    const survivors = mutants.filter((mutant) => !mutant.killed);
+    const reason = survivors.length
+      ? `tests stay green with: ${survivors.map(({ name, error }) => (error ? `${name} (${error})` : name)).join('; ')}`
+      : `all ${mutants.length} mutants killed`;
+    return { pass: survivors.length === 0, score: (mutants.length - survivors.length) / mutants.length, reason };
+  },
+
   // Line coverage of the production files the agent changed, or of all production code for a tests-only change.
   // Scored by the coverage itself, so 70% and 10% aren't both just "fail".
   coverage: (_, { metadata, config }) => {
@@ -172,6 +186,15 @@ module.exports = {
     const hits = testSources(context).filter(({ code }) => testMethodBodies(code).some((body) =>
       /\b(if|for|foreach|while|switch)\s*\(/.test(body)));
     return result(hits.length === 0, hits.length ? `logic in a test method: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  // A test whose expected value comes from the code under test can't fail: expected values are worked out
+  // independently (literals), not computed by production code, recomputed with its formula, or echoed from a stub.
+  independentExpectations: (_, context) => {
+    const types = productionTypes(context.metadata.runDir);
+    const problems = testSources(context).flatMap(({ file, code }) =>
+      testMethodBodies(code).flatMap((body) => tautologies(body, types)).map((problem) => `${file}: ${problem}`));
+    return result(problems.length === 0, problems.length ? [...new Set(problems)].join('; ') : 'ok');
   },
 
   // Prefer the real adapter over a mock when one exists and the test can observe it: `config.prefer` maps
@@ -319,6 +342,44 @@ function applicationInterfaces(runDir) {
   return fs.readdirSync(runDir, { recursive: true })
     .filter((file) => /\.Application\//.test(file) && file.endsWith('.cs') && !/\/(bin|obj)\//.test(file))
     .flatMap((file) => [...fs.readFileSync(path.join(runDir, file), 'utf8').matchAll(/\binterface\s+(\w+)/g)].map((m) => m[1]));
+}
+
+// Every class, record, struct and enum declared in the run dir's production code.
+function productionTypes(runDir) {
+  return [...new Set(fs.readdirSync(runDir, { recursive: true })
+    .filter((file) => isCSharp(file) && !isTestFile(file) && !/(^|\/)(bin|obj)\//.test(file))
+    .flatMap((file) => [...fs.readFileSync(path.join(runDir, file), 'utf8')
+      .matchAll(/\b(?:class|record|struct|enum)\s+(?!class\b|struct\b)(\w+)/g)].map((m) => m[1])))];
+}
+
+function tautologies(body, types) {
+  const callsProduction = types.length ? new RegExp(`\\b(?:${types.join('|')})\\.\\w+\\s*\\(`) : /$^/;
+  const recomputes = /\.(?:Sum|Aggregate|Average)\s*\(|(?<![\w.])[A-Za-z_][\w.]*\s*[*/]|[*/]\s*[A-Za-z_]/;
+  const stubbed = [...body.matchAll(/\.Returns(?:Async)?\(/g)].map((m) => unwrap(argumentsAt(body, m.index + m[0].length)));
+  return [...body.matchAll(/\.Should\(\)\.(?:Be|BeSameAs|BeEquivalentTo|Equal)\(|\bAssert\.(?:Equal|Same|Equivalent)\(/g)]
+    .map((m) => argumentsAt(body, m.index + m[0].length).replace(/\$?"(?:[^"\\]|\\.)*"/g, '""'))
+    .flatMap((expected) => [
+      ...(callsProduction.test(expected) ? [`expected value computed by production code: ${expected}`] : []),
+      ...(recomputes.test(expected) ? [`expected value recomputed in the test: ${expected}`] : []),
+      ...(/^(?!(?:true|false|null)$)[a-z_]\w*$/.test(unwrap(expected)) && stubbed.includes(unwrap(expected))
+        ? [`asserts the value the mock was stubbed to return: ${expected}`] : []),
+    ]);
+}
+
+// The text between the parenthesis opened just before `start` and its matching close.
+function argumentsAt(text, start) {
+  let depth = 1;
+  let end = start;
+  for (; end < text.length && depth > 0; end += 1) {
+    depth += { '(': 1, ')': -1 }[text[end]] ?? 0;
+  }
+  return text.slice(start, end - 1).trim();
+}
+
+// Maybe.From(order) and Result.Success(order) carry the same value as order.
+function unwrap(expression) {
+  const wrapped = expression.match(/^(?:Maybe|Result)(?:<[^>]*>)?\.\w+\(\s*([\s\S]*?)\s*\)$/);
+  return wrapped ? unwrap(wrapped[1]) : expression;
 }
 
 // From each [Fact]/[Theory] method's signature to the next member declaration.
