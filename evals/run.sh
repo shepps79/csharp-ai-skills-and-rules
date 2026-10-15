@@ -3,12 +3,14 @@
 # Usage: evals/run.sh <variant> <reps> [task...]
 #   variant: none | current | <dir under evals/variants/>
 # Env: EVAL_MODEL (sonnet), EVAL_EFFORT (model default), EVAL_BUDGET USD per run (3),
+#      EVAL_JUDGE_MODEL (sonnet), EVAL_JUDGE_EFFORT (model default) for tasks with a rubric.md,
 #      EVAL_JOBS parallel runs (3), EVAL_KEEP=1 keeps the temp workdirs.
 # Output: evals/results/<utc-stamp>-<variant>/{results.csv,summary.md,runs/}
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
 
 EVAL_MODEL="${EVAL_MODEL:-sonnet}" EVAL_EFFORT="${EVAL_EFFORT:-}" EVAL_BUDGET="${EVAL_BUDGET:-3}"
+CLI_VERSION="$(claude --version 2>/dev/null | cut -d' ' -f1)"
 
 run_one() { # <variant> <task> <rep> <outdir> <tmpdir>
     local variant="$1" task="$2" rep="$3" out="$4" tmp="$5"
@@ -26,21 +28,27 @@ run_one() { # <variant> <task> <rep> <outdir> <tmpdir>
         --permission-mode acceptEdits \
         --allowedTools Read Edit Write Glob Grep "Bash(dotnet *)" "Bash(git *)" "Bash(ls *)" \
             "Bash(cat *)" "Bash(find *)" "Bash(grep *)" "Bash(head *)" "Bash(tail *)" "Bash(mkdir *)" \
+            "Bash(bash tools/*)" "Bash(./tools/*)" \
         </dev/null >"$r/transcript.jsonl" 2>"$r/stderr.log")
     local duration=$((SECONDS - start))
 
     git -C "$w" add -A && git -C "$w" diff --cached baseline >"$r/diff.patch"
-    local gate_ok=0 check_ok=0
+    # A task grades with check.sh, rubric.md (LLM judge) or both; a missing grader counts as passed.
+    local t="$EVALS/tasks/$task" gate_ok=0 check_ok=1 judge_ok=""
     gate "$w" >"$r/gate.log" 2>&1 && gate_ok=1
-    "$EVALS/tasks/$task/check.sh" "$w" >"$r/check.log" 2>&1 && check_ok=1
+    if [[ -x "$t/check.sh" ]]; then "$t/check.sh" "$w" "$r" >"$r/check.log" 2>&1 || check_ok=0; fi
+    if [[ -f "$t/rubric.md" ]]; then judge_ok=1; python3 "$EVALS/judge.py" "$t" "$w" "$r" >"$r/judge.log" 2>&1 || judge_ok=0; fi
 
-    local result cost turns failed
+    local result cost turns failed model_id verified skills pass
     result="$(grep '"type":"result"' "$r/transcript.jsonl" | tail -1)"
     cost="$(jq -r '.total_cost_usd // ""' <<<"$result" 2>/dev/null)"
     turns="$(jq -r '.num_turns // ""' <<<"$result" 2>/dev/null)"
-    failed="$( (grep -h '^FAIL' "$r/check.log" "$r/gate.log" || true) | sed 's/^FAIL //' | paste -sd';' -)"
-    local kind=fixture; [[ -f "$EVALS/tasks/$task/skeleton" ]] && kind=skeleton
-    echo "$variant,$task,$rep,$EVAL_MODEL,$EVAL_EFFORT,$gate_ok,$check_ok,$((gate_ok && check_ok)),\"$failed\",$cost,$turns,$duration,$kind" >"$r/row.csv"
+    model_id="$(jq -r 'select(.type=="system" and .subtype=="init") | .model' "$r/transcript.jsonl" 2>/dev/null | head -1)"
+    verified="$(R="$r" verified_after_edit)" skills="$(R="$r" skills_fired)"
+    failed="$( (grep -h '^FAIL' "$r/check.log" "$r/gate.log" "$r/judge.log" 2>/dev/null || true) | sed 's/^FAIL //; s/[",]//g' | paste -sd';' -)"
+    pass=$((gate_ok && check_ok && ${judge_ok:-1}))
+    local kind=fixture; [[ -f "$t/skeleton" ]] && kind=skeleton
+    echo "$variant,$task,$rep,$EVAL_MODEL,$EVAL_EFFORT,$gate_ok,$check_ok,$pass,\"$failed\",$cost,$turns,$duration,$kind,$judge_ok,$model_id,$CLI_VERSION,$verified,$skills" >"$r/row.csv"
     [[ "${EVAL_KEEP:-0}" == 1 ]] || rm -rf "$w"
     echo "done $task-$rep: gate=$gate_ok check=$check_ok cost=$cost"
 }
@@ -60,7 +68,7 @@ for task in "${tasks[@]}"; do for rep in $(seq 1 "$reps"); do echo "$task $rep";
     | xargs -P "${EVAL_JOBS:-3}" -L1 bash -c '"$0" --one "$1" "$4" "$5" "$2" "$3"' "$0" "$variant" "$out" "$tmp"
 
 {
-    echo "variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s,kind"
+    echo "variant,task,rep,model,effort,gate,check,pass,failed_checks,cost_usd,turns,duration_s,kind,judge,model_id,cli_version,verified_after_edit,skills_fired"
     cat "$out"/runs/*/row.csv 2>/dev/null
 } >"$out/results.csv"
 "$EVALS/report.sh" "$out/results.csv" >"$out/summary.md"

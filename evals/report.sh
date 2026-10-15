@@ -23,8 +23,12 @@ print("# Eval summary\n")
 for v in variants:
     vr = [r for r in rows if r["variant"] == v]
     costs = [float(r["cost_usd"]) for r in vr if r["cost_usd"]]
-    print(f"- `{v}`: model {vr[0]['model']}, effort {vr[0]['effort'] or 'default'}, "
-          f"{len(vr)} runs, ${sum(costs):.2f} total")
+    ids = sorted({r.get("model_id") or r["model"] for r in vr})
+    cli = sorted({r.get("cli_version") or "?" for r in vr})
+    edited = [r for r in vr if r.get("verified_after_edit") in ("0", "1")]
+    verified = f"{sum(r['verified_after_edit'] == '1' for r in edited)}/{len(edited)}" if edited else "n/a"
+    print(f"- `{v}`: model {', '.join(ids)}, effort {vr[0]['effort'] or 'default'}, CLI {', '.join(cli)}, "
+          f"{len(vr)} runs, ${sum(costs):.2f} agent cost, build/test after last edit {verified}")
 kind = {r["task"]: r.get("kind") or "fixture" for r in rows}
 for k, title in (("fixture", "Fixture tasks"), ("skeleton", "Skeleton (greenfield) tasks")):
     ks = [t for t in tasks if kind[t] == k]
