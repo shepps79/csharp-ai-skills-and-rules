@@ -58,6 +58,17 @@ A result's output is the git diff of everything the agent changed. A cell is PAS
   `code <dir>` or `git -C <dir> diff --cached HEAD`. `transcript.jsonl` beside it shows how the agent got there.
   Run dirs live in the temp folder, so they disappear when the machine restarts.
 
+## Quality %
+
+```bash
+npm run report                  # latest eval
+npm run report -- <eval-id>     # a specific one
+```
+
+Prints a quality % per variant, overall and per task. Each run's quality is the weighted mean of its checks
+(build, tests and judge weigh 3; each rule check 1; the judge's own score is fractional), and is 0 when the build fails.
+"all checks pass" is the stricter share of runs where nothing failed.
+
 ## Grading
 
 - `graders/checks.js`: deterministic checks on build, tests and the files the agent changed.

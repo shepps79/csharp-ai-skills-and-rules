@@ -30,8 +30,8 @@ defaultTest:
   options:
     provider: file://providers/judge.js
   assert:
-    - { type: javascript, value: file://graders/checks.js:build, metric: build }
-    - { type: javascript, value: file://graders/checks.js:tests, metric: tests }
+    - { type: javascript, value: file://graders/checks.js:build, metric: build, weight: 3 }
+    - { type: javascript, value: file://graders/checks.js:tests, metric: tests, weight: 3 }
     - { type: javascript, value: file://graders/checks.js:centralPackageVersions, metric: central-packages }
     - { type: javascript, value: file://graders/checks.js:noInternalsVisibleTo, metric: no-internals-visible-to }
     - { type: javascript, value: file://graders/checks.js:fileScopedNamespaces, metric: file-scoped-namespaces }
@@ -51,6 +51,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - type: llm-rubric
         metric: judge
+        weight: 3
         value: |
           The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
           Pass only if all of these hold:
@@ -69,6 +70,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - type: llm-rubric
         metric: judge
+        weight: 3
         value: |
           The output is a git diff adding unit tests for OrderService.PlaceOrderAsync in a C# xUnit v3 project.
           Pass only if all of these hold:
@@ -90,6 +92,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - type: llm-rubric
         metric: judge
+        weight: 3
         value: |
           The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
           Pass only if all of these hold:
