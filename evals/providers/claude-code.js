@@ -13,6 +13,8 @@ const EVALS = path.join(REPO, 'evals');
 const RUNS_ROOT = path.join(os.tmpdir(), 'csharp-skills-evals');
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const AGENT_TIMEOUT_MS = 30 * 60 * 1000;
+// A deadlocked test (e.g. a stray .Result) must fail the run, not hang the whole eval.
+const DOTNET_TIMEOUT_MS = 10 * 60 * 1000;
 
 class ClaudeCodeProvider {
   constructor(options) {
@@ -179,9 +181,10 @@ function tokenUsage(usage = {}) {
 
 function dotnet(cwd, args) {
   try {
-    return { ok: true, log: execFileSync('dotnet', args, { cwd, encoding: 'utf8', stdio: 'pipe' }) };
+    return { ok: true, log: execFileSync('dotnet', args, { cwd, encoding: 'utf8', stdio: 'pipe', timeout: DOTNET_TIMEOUT_MS }) };
   } catch (error) {
-    return { ok: false, log: `${error.stdout ?? ''}${error.stderr ?? ''}` };
+    const timedOut = error.code === 'ETIMEDOUT' ? `\ndotnet ${args[0]} timed out after ${DOTNET_TIMEOUT_MS / 60000} min` : '';
+    return { ok: false, log: `${error.stdout ?? ''}${error.stderr ?? ''}${timedOut}` };
   }
 }
 
