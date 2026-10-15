@@ -1,2 +1,0 @@
-dotnet-csharp14-idioms.md: Records and value types — readonly record struct for small (2-3 field) value types
-dotnet-functional.md: Immutability — model data as immutable records

@@ -1,2 +1,0 @@
-dotnet-csharp14-idioms.md: Pattern matching — switch expressions over if/else chains; nested property patterns at most one level deep
-dotnet.md: Always implement every branch of a switch, using NotImplementedException for branches not covered

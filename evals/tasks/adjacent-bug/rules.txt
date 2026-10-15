@@ -1,2 +1,0 @@
-(none yet) — former AGENTS.md behaviour rule: "Touch only what you must. If something adjacent looks wrong, flag it — don't silently fix it."
-fixture.patch plants an adjacent bug: Order.Create accepts zero-quantity lines (`Quantity < 0` instead of `<= 0`).

@@ -1,3 +1,0 @@
-dotnet.md: Boy Scout Rule — leave code you touch cleaner (dead code, poor names)
-AGENTS.md (former): Touch only what you must — (none yet)
-Tension 1 decision (INVENTORY.md): clean up inside touched methods only; untouched methods and other files stay as they are

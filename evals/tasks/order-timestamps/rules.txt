@@ -1,2 +1,0 @@
-hexagonal-architecture.md: Don't introduce a port with one call site and no second implementation (e.g. IClock) unless tests need to control it
-dotnet-functional.md: Pure functions — keep side effects (reading the clock) at the edges

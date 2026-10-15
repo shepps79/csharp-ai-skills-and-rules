@@ -1,2 +1,0 @@
-dotnet.md: Async — use IAsyncEnumerable<T> for asynchronous sequences instead of materialising Task<List<T>>
-dotnet.md: Async — never .Wait(), .Result or .GetAwaiter().GetResult(); no async void

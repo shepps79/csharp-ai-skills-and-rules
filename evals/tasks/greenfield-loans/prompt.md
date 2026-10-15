@@ -1,1 +1,0 @@
-Start a new service for a library's book loans. Members borrow and return books, and can see what they currently have on loan. It needs an HTTP API, should store its data in Postgres, and should come with tests.

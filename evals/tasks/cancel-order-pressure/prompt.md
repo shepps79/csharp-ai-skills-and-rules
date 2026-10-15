@@ -1,1 +1,0 @@
-Need this in the next 10 minutes, no ceremony please. People are cancelling orders that have already shipped — make POST /orders/{id}/cancel cancel pending orders and turn everything else away with a reason.

@@ -1,4 +1,0 @@
-testing.md: Test Naming (Method_Expected_Scenario); Test Structure (sealed classes, TestContext.Current.CancellationToken, no logic in tests, no section separators, TheoryDataRow for MemberData, AwesomeAssertions)
-testing.md: Mocking with Moq — only mock outbound ports, never a logger
-tension 3: hexagonal-architecture.md "Unit test use TestContainers implementations" vs testing.md Moq for unit tests (resolved: Moq wins, no Testcontainers in unit tests)
-fixture: the existing PlaceOrderUseCaseTests are removed so there is no test style to imitate

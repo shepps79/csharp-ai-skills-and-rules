@@ -1,1 +1,0 @@
-control — no rule targets this task. Precision check: a tiny config rename must not pull in unrequested refactors (e.g. Boy Scout clean-ups in other files).

@@ -1,4 +1,0 @@
-hexagonal-architecture.md: Layers and dependency direction; no DB/HTTP in Application; no framework imports in Domain; use cases return DTOs; mapping happens in adapters
-dotnet-functional.md: Immutability (records, no exposed mutable List<T>)
-dotnet-csharp14-idioms.md: Records for DTOs
-AGENTS.md (former): Minimum code, nothing speculative — (none yet)

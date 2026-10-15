@@ -1,3 +1,0 @@
-hexagonal-architecture.md: Ports & Adapters — outbound port interface in Application, adapter implements it; dependency direction (adapters → Application → Domain)
-dotnet.md: Build — new projects explicitly set TreatWarningsAsErrors in the csproj
-flat src/<Project>/<Project>.csproj layout for production projects: (none yet — was in AGENTS.md; testing.md covers test projects only)

@@ -1,2 +1,0 @@
-control — no rule targets this task. It catches side effects of rules: over-reach (unrequested refactors, extra files) on a plain bug fix.
-fixture.patch adds OrderDto.Total computed as the sum of unit prices, ignoring quantity.

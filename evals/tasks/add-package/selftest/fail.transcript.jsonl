@@ -1,2 +1,0 @@
-{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"src/Orders.Api/Orders.Api.csproj"}}]}}
-{"type":"result","result":"Added /health and committed."}

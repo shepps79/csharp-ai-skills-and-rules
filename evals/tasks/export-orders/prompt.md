@@ -1,1 +1,0 @@
-Finance want to pull every order for their month-end reconciliation. Add GET /orders/export that returns all orders. There are millions of them, so it mustn't load them all into memory before it starts sending.

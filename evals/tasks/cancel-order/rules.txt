@@ -1,7 +1,0 @@
-dotnet-functional.md: Model failure with Result, not exceptions
-dotnet-functional.md: Pure functions / don't mutate; Immutability
-dotnet-functional.md: Compose, don't branch — prefer Match over IsSuccess/.Value
-dotnet.md: Positive logic conditions; early return
-dotnet.md: Member ordering; no comments on private functions
-AGENTS.md (former): Minimum code, nothing speculative — (none yet)
-hexagonal-architecture.md: business rules in Domain/Application, not the Presentation adapter

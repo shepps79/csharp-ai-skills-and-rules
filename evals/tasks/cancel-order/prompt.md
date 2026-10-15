@@ -1,1 +1,0 @@
-Customers need to be able to cancel an order. Only orders that haven't shipped yet (still pending) can be cancelled; anything else should be refused with a reason the client can show. Add POST /orders/{id}/cancel for it.

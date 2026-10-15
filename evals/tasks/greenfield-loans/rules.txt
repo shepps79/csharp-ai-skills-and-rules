@@ -1,7 +1,0 @@
-skeleton: greenfield from templates/ only — tests how the rules scaffold a new solution
-testing.md: Test Organization (flat src/<Project>/ layout, UnitTests + IntegrationTests projects); test stack; no InternalsVisibleTo; TestContext token
-dotnet.md: Central package management; TreatWarningsAsErrors per csproj; prefer built-in OpenAPI over Swashbuckle
-hexagonal-architecture.md: Layers and dependency direction; no framework imports in Domain; no DB in Application
-dotnet-functional.md: CSharpFunctionalExtensions; Match over IsSuccess; LINQ over loops
-dotnet-csharp14-idioms.md: extension blocks
-AGENTS.md: dotnet SDK 10
