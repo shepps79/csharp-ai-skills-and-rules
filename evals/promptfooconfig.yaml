@@ -51,6 +51,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
       - type: llm-rubric
         metric: judge
         weight: 3
@@ -71,6 +72,7 @@ tests:
       - *acceptance
       - { type: javascript, value: file://graders/checks.js:noTestcontainers, metric: no-testcontainers }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
       - type: llm-rubric
         metric: judge
         weight: 3
@@ -104,6 +106,103 @@ tests:
           - OrderService loads the order through the repository port, treats a missing order as a failure Result, and composes steps without null checks.
           - Tests cover pending, confirmed, already-cancelled and missing-order cases.
           - Names reveal intent, there is no speculative code or duplication, and members follow the usual C# ordering.
+          Score 0-1 by the share of points satisfied.
+
+  - description: get-order-mocked (conflict — testing.md's (Order?)null mock vs Maybe)
+    vars:
+      task: |
+        Callers of `OrderService` need the summary of an order by its id, and need to know when there is no such order.
+        Add the repository lookup and the service method, and unit-test the service with Moq against the repository port,
+        including the not-found case.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - { type: javascript, value: file://graders/checks.js:noNullInTests, metric: no-null-in-tests }
+      - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters, with Moq unit tests.
+          Pass only if all of these hold:
+          - Absence is a Maybe (CSharpFunctionalExtensions) from the port through the service; nothing returns or passes null.
+          - The tests mock only IOrderRepository and stub the not-found case with Maybe.None, not a null; they assert on the
+            Maybe or Result the service returns, not with BeNull().
+          - Tests cover found and not-found, are named Method_ExpectedBehavior_Scenario, and pass TestContext.Current.CancellationToken.
+          - Names reveal intent and there is no speculative code.
+          Score 0-1 by the share of points satisfied.
+
+  - description: reserve-stock (conflict — translate adapter errors to an exception or a Result)
+    vars:
+      task: |
+        Placing an order must now reserve stock with the warehouse service: `POST /reservations` on the base URL in
+        configuration (`Warehouse:BaseUrl`), sending the order id and its lines. If the warehouse is unreachable or
+        returns a non-success status, the order can't be placed and must not be stored. Add the outbound HTTP adapter
+        and unit tests for `OrderService`.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
+      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - A capability-named outbound port in Application (e.g. IStockReservations) returns a Result; the HttpClient adapter
+            in Infrastructure turns HTTP failures and HttpRequestException into a failure Result, so no exception crosses the port.
+          - OrderService composes the reservation into PlaceOrderAsync with Bind/Check-style steps, with no try/catch, and
+            stores the order only after a successful reservation.
+          - The adapter is registered in the composition root with a typed HttpClient whose base address comes from configuration.
+          - Unit tests fake the port and cover a successful reservation and a failed one (order not stored).
+          Score 0-1 by the share of points satisfied.
+
+  - description: order-limits (skill — configuration; hidden acceptance tests)
+    vars:
+      acceptance: order-limits
+      task: |
+        An order may have at most a configurable number of lines, set per environment and 50 by default.
+        `POST /orders` must reject an order over the limit with 400 Bad Request. Add tests.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:skillsUsed, metric: skills-used, config: { skills: [configuration] } }
+      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - The limit is bound with the Options pattern from appsettings, with a default of 50, and validated at startup
+            (ValidateDataAnnotations or Validate, plus ValidateOnStart).
+          - Exceeding the limit is a Result failure, returned rather than thrown, which the endpoint maps to 400.
+          - Domain stays free of configuration types; the limit reaches the rule as a plain value.
+          - Tests cover an order at the limit and one over it; nothing speculative (no unused options or settings).
+          Score 0-1 by the share of points satisfied.
+
+  - description: add-telemetry (skill — opentelemetry)
+    vars:
+      task: |
+        Operators need to see how long placing an order takes and how many orders are placed or rejected.
+        Add tracing and metrics for placing an order, exported over OTLP.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:skillsUsed, metric: skills-used, config: { skills: [opentelemetry] } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - Placing an order starts an Activity from a named ActivitySource and records placed and rejected counts with
+            instruments created through IMeterFactory, tagged by outcome rather than encoded in instrument names.
+          - Application uses only System.Diagnostics types; the OpenTelemetry SDK and the OTLP exporter are configured in the
+            composition root, with the endpoint left to the standard OTEL_* settings rather than hard-coded.
+          - The new packages are added to Directory.Packages.props only.
+          - Names reveal intent and there is no speculative telemetry (no instruments nothing records).
           Score 0-1 by the share of points satisfied.
 
   - description: greenfield-inventory (new service from an empty repo)
