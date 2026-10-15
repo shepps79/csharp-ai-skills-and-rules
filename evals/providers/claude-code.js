@@ -54,7 +54,9 @@ class ClaudeCodeProvider {
 
 function createRunDir(fixture, { variant, rulesRef }) {
   const runDir = path.join(RUNS_ROOT, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, 'repo');
-  fs.cpSync(path.join(EVALS, 'fixtures', fixture), runDir, { recursive: true });
+  // Fixtures symlink shared files from templates/; copy their contents so each run dir is self-contained.
+  fs.mkdirSync(runDir, { recursive: true });
+  execFileSync('cp', ['-RL', `${path.join(EVALS, 'fixtures', fixture)}/.`, runDir]);
   if (variant === 'rules') {
     copyRules(rulesRef, runDir);
   }
