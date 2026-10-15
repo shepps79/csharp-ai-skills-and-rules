@@ -28,7 +28,7 @@ checks plus a local `claude -p` judge. Everything stays local; promptfoo telemet
 4. **Skill-triggering tasks.** Tasks that should load a skill (`ef-core`, `fast-endpoints`, `configuration`,
    `dependency-injection`, `opentelemetry`, `aspire`) and tasks that shouldn't. Grade on
    `metadata.agent.skillsUsed`. Needs a fixture with an API project and EF Core (add `fixtures/orders-api`).
-5. **Hidden acceptance tests.** For tasks with a fixed contract, copy tests from `tasks/<id>/acceptance/`
+5. **Hidden acceptance tests.** For tasks with a fixed contract, copy tests from `acceptance/<task-id>/`
    into the run dir after the agent finishes and run them in `buildAndTest`.
 6. **Architecture check.** Add an ArchUnitNET or NetArchTest test to the fixture's acceptance set enforcing
    Domain → nothing, Application → Domain, Infrastructure → Application.

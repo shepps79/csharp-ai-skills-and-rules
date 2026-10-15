@@ -2,7 +2,8 @@
 description: csharp-skills rules and skills
 
 prompts:
-  - '{{task}}'
+  - raw: '{{task}}'
+    label: Agent task
 
 # Narrow with --filter-providers, e.g. 'rules@' to compare committed rules against your uncommitted edits.
 providers:
@@ -41,7 +42,9 @@ defaultTest:
 tests:
   - description: find-order (trap — tempts a nullable return)
     vars:
-      task: file://tasks/find-order.md
+      task: |
+        Callers of `OrderService` need to look up a single order by its id. An order with that id might not exist.
+        Add this capability end to end (application port, in-memory adapter, service method) with unit tests.
     assert:
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
@@ -59,7 +62,8 @@ tests:
 
   - description: place-order-tests (conflict — mocks vs Testcontainers)
     vars:
-      task: file://tasks/place-order-tests.md
+      task: |
+        `OrderService.PlaceOrderAsync` has no unit tests. Add them.
     assert:
       - { type: javascript, value: file://graders/checks.js:noTestcontainers, metric: no-testcontainers }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
@@ -76,7 +80,10 @@ tests:
 
   - description: cancel-order (realistic feature)
     vars:
-      task: file://tasks/cancel-order.md
+      task: |
+        Customers need to be able to cancel an order through `OrderService`, identified by order id.
+        Pending and confirmed orders can be cancelled; cancelling an order that is already cancelled is an error,
+        and so is cancelling an order that doesn't exist. Implement this with unit tests.
     assert:
       - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }

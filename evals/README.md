@@ -68,6 +68,5 @@ Single runs are noisy. Use `--repeat 5` or more, and treat differences smaller t
 
 ## Add a task
 
-1. Write the prompt in `tasks/<id>.md`.
-2. Add a test to `promptfooconfig.yaml` with the checks that apply and a rubric.
-3. Add a fixture under `fixtures/` only if `orders` can't host the task.
+1. Add a test to `promptfooconfig.yaml` with the task text in `vars.task`, the checks that apply, and a rubric.
+2. Add a fixture under `fixtures/` only if `orders` can't host the task.
