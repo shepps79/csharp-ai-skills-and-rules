@@ -2,54 +2,62 @@
 
 The eval harness in `evals/` (see `evals/README.md`) runs Claude Code headless against a .NET fixture
 for each variant (`none`, `env`, `rules@WORKTREE`) and grades the result with deterministic
-checks plus a local `claude -p` judge. Everything stays local; promptfoo telemetry and sharing are off.
+checks, hidden acceptance tests and a local `claude -p` judge. Everything stays local; promptfoo telemetry and sharing are off.
 
 ## Current state
 
-- Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and four tasks: `find-order` (null trap), `place-order-tests`
-  (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `greenfield-inventory` (new service).
+- Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and eight tasks: `find-order` (null trap), `place-order-tests`
+  (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
+  mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
+  hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `greenfield-inventory` (new service).
+- 25 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
+  contract test for `order-limits`.
+- Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores
+  the line coverage of the production files the agent changed.
+- Ablation (`config.excludeRules`), pairwise judging (`npm run eval-pairwise`), a cross-eval fingerprint guard
+  (`npm run report -- <id> <id>` exits 1 on a mismatch) and per-variant turns, tokens, cost and minutes are in place.
 - `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
-- 19 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
-- The checks were hardened on 2026-10-15 (see `evals-review.md`); results graded before then aren't comparable.
-- Baseline `eval-ucp-2026-10-15T10:15:40` (3 tasks, before greenfield): all checks pass none 7%, env 27%,
-  rules 93–100%. Identical HEAD/WORKTREE runs differed by 7 points, which is the noise floor at 15 runs.
+- The checks, judge prompt, fixture analyzers and tasks changed on 2026-10-15; results graded before then, including
+  baseline `eval-PHZ-2026-10-15T12:05:05`, aren't comparable.
 
 ## Next steps, in order
 
-1. **Re-record the baseline** with the greenfield task included: `npm run eval-baseline -- --repeat 5`.
-2. **Ablation.** Add a provider option that drops one rule file (e.g. `config.excludeRules: [testing.md]`)
-   and run each file out in turn. Files whose removal changes nothing are dead weight or ignored.
-3. **Rule-conflict tasks.** Add a task per known contradiction:
-   - `hexagonal-architecture.md` "Unit test use TestContainers" vs `testing.md` Moq for ports
-     (covered by `place-order-tests`).
-   - `testing.md` examples returning `(Order?)null` vs `dotnet-functional.md` banning null.
-   - `hexagonal-architecture.md` "translate to an exception" vs `dotnet-functional.md` "translate to a Result".
-4. **Skill-triggering tasks.** Tasks that should load a skill (`ef-core`, `fast-endpoints`, `configuration`,
-   `dependency-injection`, `opentelemetry`, `aspire`) and tasks that shouldn't. Grade on
-   `metadata.agent.skillsUsed`. `orders` now has a minimal-API project; EF Core-triggering tasks still need a database adapter.
-5. **Hidden acceptance tests.** For tasks with a fixed contract, copy tests from `acceptance/<task-id>/`
-   into the run dir after the agent finishes and run them in `buildAndTest`.
-6. **Architecture check.** `layeredProjects` now checks project references (Domain → nothing, Application → Domain,
-   a web API → Application, Infrastructure ↛ API), but only for projects the agent changed, so only greenfield.
-   An ArchUnitNET/NetArchTest test in the fixture would also cover namespaces and types within `orders`.
-7. **Pairwise judging.** Use promptfoo `select-best` with the judge provider to pick the better of
-   two rule versions per test (restore `rules@HEAD` for this), run twice with the order swapped to cancel position bias.
-8. **Fingerprint guard.** A small script (or `javascript` assertion) that fails when results being compared
-   have different `metadata.fingerprint.hash`.
-9. **Cost and effort metrics.** Surface `metadata.agent.turns`, tokens and cost per variant; a rule change
-   with the same quality at lower cost counts as a win.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 8 tasks × 3 variants × 5 = 120 agent
+   runs; at the last baseline's cost per run, roughly $20 and 1.5–2 hours at concurrency 2.
+2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
+3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
+   `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
+   database adapter in `orders`), `fast-endpoints`, `dependency-injection` and `aspire`.
+4. **More hidden acceptance tests.** Only `order-limits` fixes a contract in its task text. `find-order`,
+   `cancel-order` and `get-order-mocked` leave method names to the agent, so they can't have contract tests without
+   changing their task text, which changes the yardstick.
+5. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
+   rules settle and run `eval-pairwise` in both orders.
+
+## Rule problems the evals now surface
+
+These are measured, not fixed; they are inputs for the next round of rule changes.
+
+- `hexagonal-architecture.md` "Unit test use TestContainers" vs `testing.md` Moq for ports (`place-order-tests`).
+- `testing.md`'s mocking example stubs `(Order?)null` and asserts `BeNull()`, which `dotnet-functional.md` bans
+  (`get-order-mocked`, check `noNullInTests`).
+- `hexagonal-architecture.md` "translate to an application exception" vs `dotnet-functional.md` "translate to a
+  Result" (`reserve-stock`, check `noExceptionsInApplication`). Its rubric takes the `dotnet-functional.md` side.
+- `dotnet.md` "Async methods must have the Async suffix" vs `testing.md` test names (`PlaceOrder_Returns201_…`).
+  The template exempts test projects, so the build doesn't flag it, but the rules still say both.
+- `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
 
 ## Compiler-enforced rules
 
 `templates/dotnet/.editorconfig` + `Directory.Build.props` turn the checkable parts of `.claude/rules` into build
-errors; copy both into any .NET repo. Known gaps, still prose-only:
+errors; copy both into any .NET repo (the analyzers need central package management). Known gaps, still prose-only:
 
-- Member ordering (`dotnet.md`): no built-in analyzer. StyleCop.Analyzers SA1201/SA1202/SA1204 would cover it.
 - `String` vs `string` (IDE0049): configured, but not reported at build by SDK 10.0.301; editor only.
-- Function length, parameter count, nesting depth, commented-out code, LINQ over loops, sealed *public* classes,
-  `InternalsVisibleTo`, `async void`, `.Result`/`.Wait()`: no built-in analyzer (Sonar or VS Threading analyzers
-  cover some). The `sealedTestClasses`, `noInternalsVisibleTo` and similar eval checks cover a few of these.
+- Function length, parameter count, nesting depth, commented-out code, LINQ over loops, `InternalsVisibleTo`:
+  no analyzer here (Sonar covers some). Sealed classes are checked by the `orders` architecture tests, and
+  `noInternalsVisibleTo` and similar eval checks cover a few others.
 - The rules themselves don't yet tell the agent to use the template; worth adding to `dotnet.md`.
 
 ## Things to keep in mind
@@ -58,5 +66,5 @@ errors; copy both into any .NET repo. Known gaps, still prose-only:
   and re-run the baseline after.
 - Single runs are noisy. Use `--repeat 5` or more; differences under about 7–15 points are noise at that size,
   and repeats often produce byte-identical code, so confirm a gain with a second eval.
-- The global setup (RTK, ponytail, CLAUDE.md) is deliberately part of the `env` and `rules@*` variants.
-  If it changes, the fingerprint changes and the baseline must be re-run.
+- The global setup (RTK, ponytail, CLAUDE.md and its imports, skills, agents, commands, plugin contents) is
+  deliberately part of the `env` and `rules@*` variants. If it changes, the fingerprint changes and the baseline must be re-run.

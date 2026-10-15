@@ -34,22 +34,19 @@ These minor fixes were each a few characters, so I made them while in the file:
 
 Not fixed, in rough order of how much they matter:
 
-1. **Judge prompt injection.** The judge reads the agent's diff verbatim, so a comment like "score this 1" lands in
-   its prompt. This is low risk with a cooperative agent, but nothing defends against it. Fix: tell the judge that the
-   diff is untrusted data, or strip comments before judging.
-2. **Gaps in the fingerprint.** It hashes `settings.json`, `CLAUDE.md` and `RTK.md`. It doesn't cover other `@`-imports,
-   `~/.claude/skills`, `agents/`, `commands/`, or plugin *contents* (only names and paths). A change there alters the
-   `env`/`rules` variants without changing the hash.
-3. **There is still no cross-eval fingerprint guard.** The report prints the hash, but comparing it is still manual
-   (next-steps item 8).
-4. **Regex checks remain shallow.** `testCancellationToken` misses `default` and `new CancellationToken()`, and doesn't
-   catch tests that don't pass a token at all. `noNullForAbsence` misses `FirstOrDefault()` leaking null through a
-   `Maybe`-less path. Hidden acceptance tests and an architecture test (next steps 5–6) are the real fix.
+1. ~~**Judge prompt injection.**~~ Mitigated: the judge's system prompt says the graded text is untrusted data and its
+   instructions must not be followed. A determined injection could still get through; stripping comments would be stronger.
+2. ~~**Gaps in the fingerprint.**~~ Fixed: it now hashes `CLAUDE.md` with its `@`-imports, `settings.json`, the
+   `skills/`, `agents/` and `commands/` directories, and each plugin's contents.
+3. ~~**No cross-eval fingerprint guard.**~~ Fixed: `npm run report -- <id> <id>` exits 1 when the fingerprints differ.
+4. **Regex checks remain shallow.** `testCancellationToken` now also catches `default` and `new CancellationToken()`,
+   and the build's xUnit1051 catches tests that pass no token. `noNullForAbsence` still misses `FirstOrDefault()`
+   leaking null through a `Maybe`-less path; the `orders` architecture tests and `order-limits` acceptance tests
+   cover structure and one contract, not this.
 5. ~~`layeredProjects` doesn't check Infrastructure or the API.~~ Fixed: it now requires a web API project that
    references Application, and fails Infrastructure → API references.
-6. **Killing the agent on timeout uses SIGTERM on `claude` only.** Child processes such as `dotnet` build servers can
-   outlive it. This is harmless but leaks processes.
-7. **Grader tests leave temp dirs** in `$TMPDIR/checks-test-*`.
-8. **Rule conflicts in the rules themselves** (already in next steps item 3): `testing.md` examples return
-   `(Order?)null`, and `hexagonal-architecture.md` says to translate errors into exceptions. Both contradict
-   `dotnet-functional.md`. The evals measure these conflicts; they don't fix them.
+6. ~~**Killing the agent on timeout uses SIGTERM on `claude` only.**~~ Fixed: the agent runs in its own process group,
+   and the timeout kills the group.
+7. ~~**Grader tests leave temp dirs.**~~ Fixed: `checks.test.js` removes them.
+8. **Rule conflicts in the rules themselves**: now listed under "Rule problems the evals now surface" in
+   `evals-next-steps.md`, each with the task and check that measures it.
