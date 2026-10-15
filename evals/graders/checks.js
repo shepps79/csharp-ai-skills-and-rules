@@ -163,7 +163,8 @@ module.exports = {
       'test class not sealed'),
 
   testCancellationToken: (_, context) =>
-    noMatches(context, (file) => isCSharp(file) && isTestFile(file), /CancellationToken\.None|default\(CancellationToken\)/,
+    noMatches(context, (file) => isCSharp(file) && isTestFile(file),
+      /CancellationToken\.None|default\(CancellationToken\)|new\s+CancellationToken\(|[(,]\s*default\s*\)/,
       'tests should pass TestContext.Current.CancellationToken'),
 
   noTestcontainers: (_, context) =>

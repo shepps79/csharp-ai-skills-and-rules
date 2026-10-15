@@ -107,3 +107,10 @@ test('acceptance fails when the hidden tests fail and when the build failed', ()
   assert.equal(passes('acceptance', {}, dotnet({ buildOk: false, acceptance: null })), false);
   assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: true, passed: 5, failed: 0, log: '' } })), true);
 });
+
+test('testCancellationToken catches default and new tokens', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/ServiceTests.cs': code });
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, default);')), false);
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, new CancellationToken());')), false);
+  assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, TestContext.Current.CancellationToken);')), true);
+});
