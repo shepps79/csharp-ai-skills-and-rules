@@ -7,11 +7,12 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and eight tasks: `find-order` (null trap), `place-order-tests`
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and nine tasks: `find-order` (null trap), `place-order-tests`
   (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
   mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
-  hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `greenfield-inventory` (new service).
-- 26 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+  hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the
+  rules should lead to `TimeProvider`), `greenfield-inventory` (new service).
+- 28 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
   contract test for `order-limits`.
 - Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores
@@ -25,8 +26,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 8 tasks × 2 variants × 5 = 80 agent
-   runs; at the last baseline's cost per run, roughly $15 and 1–1.5 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
+   runs; at the last baseline's cost per run, roughly $17 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
    `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
@@ -58,6 +59,8 @@ These are measured, not fixed; they are inputs for the next round of rule change
   Result" (`reserve-stock`, check `noExceptionsInApplication`). Its rubric takes the `dotnet-functional.md` side.
 - `dotnet.md` "Async methods must have the Async suffix" vs `testing.md` test names (`PlaceOrder_Returns201_…`).
   The template exempts test projects, so the build doesn't flag it, but the rules still say both.
+- `hexagonal-architecture.md` names a custom `IClock` as its example clock port, while `dotnet.md` prefers built-ins
+  (`System.TimeProvider`) and no rule names `TimeProvider` (`night-review`, checks `noSystemClock` and `usesTimeProvider`).
 - `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
 
 ## Compiler-enforced rules
