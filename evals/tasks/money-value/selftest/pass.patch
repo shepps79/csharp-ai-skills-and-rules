@@ -1,0 +1,113 @@
+diff --git a/src/Orders.Application/OrderDto.cs b/src/Orders.Application/OrderDto.cs
+index c0751a9..b23c449 100644
+--- a/src/Orders.Application/OrderDto.cs
++++ b/src/Orders.Application/OrderDto.cs
+@@ -12,5 +12,5 @@ public sealed record OrderDto(Guid Id, string CustomerId, OrderStatus Status, IR
+     /// <summary>Maps a domain order to its caller-facing shape.</summary>
+     /// <param name="order">Order to map.</param>
+     public static OrderDto From(Order order) =>
+-        new(order.Id, order.CustomerId, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice))]);
++        new(order.Id, order.CustomerId, order.Status, [.. order.Lines.Select(line => new OrderLineDto(line.Sku, line.Quantity, line.UnitPrice.Amount, line.UnitPrice.Currency))]);
+ }
+diff --git a/src/Orders.Application/OrderLineDto.cs b/src/Orders.Application/OrderLineDto.cs
+index e54d5f2..a554613 100644
+--- a/src/Orders.Application/OrderLineDto.cs
++++ b/src/Orders.Application/OrderLineDto.cs
+@@ -4,4 +4,5 @@ namespace Orders.Application;
+ /// <param name="Sku">Stock-keeping unit of the product.</param>
+ /// <param name="Quantity">Number of units ordered.</param>
+ /// <param name="UnitPrice">Price of a single unit.</param>
+-public sealed record OrderLineDto(string Sku, int Quantity, decimal UnitPrice);
++/// <param name="Currency">ISO 4217 currency code of the price, e.g. GBP.</param>
++public sealed record OrderLineDto(string Sku, int Quantity, decimal UnitPrice, string Currency);
+diff --git a/src/Orders.Application/PlaceOrderUseCase.cs b/src/Orders.Application/PlaceOrderUseCase.cs
+index 6caa1d1..66a9835 100644
+--- a/src/Orders.Application/PlaceOrderUseCase.cs
++++ b/src/Orders.Application/PlaceOrderUseCase.cs
+@@ -12,7 +12,7 @@ public sealed class PlaceOrderUseCase(IOrderRepository repository)
+     /// <param name="cancellationToken">Cancels the operation.</param>
+     /// <returns>The placed order, or the validation errors.</returns>
+     public Task<Result<OrderDto>> ExecuteAsync(PlaceOrderRequest request, CancellationToken cancellationToken) =>
+-        Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))])
++        Order.Create(request.CustomerId, [.. request.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, new Money(line.UnitPrice, line.Currency)))])
+             .Tap(order => repository.AddAsync(order, cancellationToken))
+             .Map(OrderDto.From);
+ }
+diff --git a/src/Orders.Domain/Money.cs b/src/Orders.Domain/Money.cs
+new file mode 100644
+index 0000000..c3b862c
+--- /dev/null
++++ b/src/Orders.Domain/Money.cs
+@@ -0,0 +1,6 @@
++namespace Orders.Domain;
++
++/// <summary>An amount in a specific currency.</summary>
++/// <param name="Amount">The amount.</param>
++/// <param name="Currency">ISO 4217 currency code, e.g. GBP.</param>
++public readonly record struct Money(decimal Amount, string Currency);
+diff --git a/src/Orders.Domain/OrderLine.cs b/src/Orders.Domain/OrderLine.cs
+index 63c10a3..a5e87fe 100644
+--- a/src/Orders.Domain/OrderLine.cs
++++ b/src/Orders.Domain/OrderLine.cs
+@@ -4,4 +4,4 @@ namespace Orders.Domain;
+ /// <param name="Sku">Stock-keeping unit of the product.</param>
+ /// <param name="Quantity">Number of units ordered.</param>
+ /// <param name="UnitPrice">Price of a single unit.</param>
+-public readonly record struct OrderLine(string Sku, int Quantity, decimal UnitPrice);
++public readonly record struct OrderLine(string Sku, int Quantity, Money UnitPrice);
+diff --git a/src/Orders.Infrastructure/EfOrderRepository.cs b/src/Orders.Infrastructure/EfOrderRepository.cs
+index 70be76f..0309357 100644
+--- a/src/Orders.Infrastructure/EfOrderRepository.cs
++++ b/src/Orders.Infrastructure/EfOrderRepository.cs
+@@ -26,7 +26,7 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         Id = entity.Id,
+         CustomerId = entity.CustomerId,
+         Status = Enum.Parse<OrderStatus>(entity.Status),
+-        Lines = [.. entity.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, line.UnitPrice))],
++        Lines = [.. entity.Lines.Select(line => new OrderLine(line.Sku, line.Quantity, new Money(line.UnitPrice, line.Currency)))],
+     };
+ 
+     private static OrderEntity ToEntity(Order order) => new()
+@@ -34,6 +34,6 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         Id = order.Id,
+         CustomerId = order.CustomerId,
+         Status = order.Status.ToString(),
+-        Lines = [.. order.Lines.Select(line => new OrderLineEntity { Sku = line.Sku, Quantity = line.Quantity, UnitPrice = line.UnitPrice })],
++        Lines = [.. order.Lines.Select(line => new OrderLineEntity { Sku = line.Sku, Quantity = line.Quantity, UnitPrice = line.UnitPrice.Amount, Currency = line.UnitPrice.Currency })],
+     };
+ }
+diff --git a/src/Orders.Infrastructure/OrderLineEntity.cs b/src/Orders.Infrastructure/OrderLineEntity.cs
+index d768817..5604af2 100644
+--- a/src/Orders.Infrastructure/OrderLineEntity.cs
++++ b/src/Orders.Infrastructure/OrderLineEntity.cs
+@@ -11,4 +11,7 @@ public sealed class OrderLineEntity
+ 
+     /// <summary>Price of a single unit.</summary>
+     public decimal UnitPrice { get; set; }
++
++    /// <summary>ISO 4217 currency code of the unit price.</summary>
++    public required string Currency { get; set; }
+ }
+diff --git a/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs b/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
+index 07a1c67..8fe968b 100644
+--- a/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
++++ b/src/Orders.UnitTests/Application/PlaceOrderUseCaseTests.cs
+@@ -38,9 +38,9 @@ public sealed class PlaceOrderUseCaseTests
+ 
+     public static IEnumerable<TheoryDataRow<PlaceOrderRequest, string>> InvalidRequests =>
+     [
+-        new(new PlaceOrderRequest("", [new OrderLineDto("SKU-1", 1, 5m)]), "Customer id is required."),
++        new(new PlaceOrderRequest("", [new OrderLineDto("SKU-1", 1, 5m, "GBP")]), "Customer id is required."),
+         new(new PlaceOrderRequest("cust-1", []), "An order needs at least one line."),
+-        new(new PlaceOrderRequest("cust-1", [new OrderLineDto("SKU-1", 0, 5m)]), "Every line needs a positive quantity."),
++        new(new PlaceOrderRequest("cust-1", [new OrderLineDto("SKU-1", 0, 5m, "GBP")]), "Every line needs a positive quantity."),
+     ];
+ 
+     [Theory]
+@@ -62,5 +62,5 @@ public sealed class PlaceOrderUseCaseTests
+     }
+ 
+     private static PlaceOrderRequest ValidRequest() =>
+-        new("cust-1", [new OrderLineDto("SKU-1", 2, 9.99m), new OrderLineDto("SKU-2", 1, 25m)]);
++        new("cust-1", [new OrderLineDto("SKU-1", 2, 9.99m, "GBP"), new OrderLineDto("SKU-2", 1, 25m, "GBP")]);
+ }

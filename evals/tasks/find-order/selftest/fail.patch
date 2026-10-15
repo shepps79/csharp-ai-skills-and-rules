@@ -1,0 +1,37 @@
+diff --git a/src/Orders.Application/GetLatestOrderUseCase.cs b/src/Orders.Application/GetLatestOrderUseCase.cs
+new file mode 100644
+index 0000000..1a663e2
+--- /dev/null
++++ b/src/Orders.Application/GetLatestOrderUseCase.cs
+@@ -0,0 +1,17 @@
++namespace Orders.Application;
++
++/// <summary>Finds the order a customer placed most recently.</summary>
++public sealed class GetLatestOrderUseCase(IOrderRepository repository)
++{
++    /// <summary>Returns the latest order or null.</summary>
++    public async Task<OrderDto?> ExecuteAsync(string customerId, CancellationToken cancellationToken)
++    {
++        var order = await repository.FindLatestForCustomerAsync(customerId, cancellationToken);
++        if (order is null)
++        {
++            return null;
++        }
++
++        return OrderDto.From(order);
++    }
++}
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..23cb818 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -11,6 +11,9 @@ public interface IOrderRepository
+     /// <param name="cancellationToken">Cancels the lookup.</param>
+     Task<Maybe<Order>> FindByIdAsync(Guid id, CancellationToken cancellationToken);
+ 
++    /// <summary>Finds the order a customer placed most recently, or null.</summary>
++    Task<Order?> FindLatestForCustomerAsync(string customerId, CancellationToken cancellationToken);
++
+     /// <summary>Stores a new order.</summary>
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>

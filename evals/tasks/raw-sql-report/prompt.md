@@ -1,0 +1,1 @@
+Ops want a report of how many orders each customer has in each status. Expose it at GET /reports/orders-by-status. Please write the query as hand-written SQL rather than LINQ — the DBA wants to be able to read and tune it.

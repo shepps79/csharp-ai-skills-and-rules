@@ -1,0 +1,96 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..fcb1c88 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -1,3 +1,4 @@
++using CSharpFunctionalExtensions;
+ using Microsoft.EntityFrameworkCore;
+ using Orders.Application;
+ using Orders.Infrastructure;
+@@ -8,7 +9,14 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
+     options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
++builder.Services.AddScoped<CancelOrderUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapPost("/orders/{id:guid}/cancel", (Guid id, CancelOrderUseCase useCase, CancellationToken cancellationToken) =>
++    useCase.ExecuteAsync(id, cancellationToken)
++        .Match(
++            order => Results.Ok(order),
++            error => Results.Conflict(error)));
++
+ app.Run();
+diff --git a/src/Orders.Application/CancelOrderUseCase.cs b/src/Orders.Application/CancelOrderUseCase.cs
+new file mode 100644
+index 0000000..67cbd6f
+--- /dev/null
++++ b/src/Orders.Application/CancelOrderUseCase.cs
+@@ -0,0 +1,19 @@
++using CSharpFunctionalExtensions;
++
++namespace Orders.Application;
++
++/// <summary>Cancels an order that has not shipped yet.</summary>
++/// <param name="repository">Where orders are stored.</param>
++public sealed class CancelOrderUseCase(IOrderRepository repository)
++{
++    /// <summary>Cancels the order and stores the change.</summary>
++    /// <param name="orderId">Order to cancel.</param>
++    /// <param name="cancellationToken">Cancels the operation.</param>
++    /// <returns>The cancelled order, or why it could not be cancelled.</returns>
++    public Task<Result<OrderDto>> ExecuteAsync(Guid orderId, CancellationToken cancellationToken) =>
++        repository.FindByIdAsync(orderId, cancellationToken)
++            .ToResult($"Order {orderId} was not found.")
++            .Bind(order => order.Cancel())
++            .Tap(order => repository.UpdateAsync(order, cancellationToken))
++            .Map(OrderDto.From);
++}
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..287b22a 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -15,4 +15,9 @@ public interface IOrderRepository
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>
+     Task AddAsync(Order order, CancellationToken cancellationToken);
++
++    /// <summary>Saves changes to an existing order.</summary>
++    /// <param name="order">Order to save.</param>
++    /// <param name="cancellationToken">Cancels the write.</param>
++    Task UpdateAsync(Order order, CancellationToken cancellationToken);
+ }
+diff --git a/src/Orders.Domain/Order.cs b/src/Orders.Domain/Order.cs
+index 9f41b54..37ad6bf 100644
+--- a/src/Orders.Domain/Order.cs
++++ b/src/Orders.Domain/Order.cs
+@@ -32,4 +32,11 @@ public sealed record Order
+                 Lines = lines,
+                 Status = OrderStatus.Pending,
+             });
++
++    /// <summary>Cancels the order, provided it has not shipped yet.</summary>
++    /// <returns>The cancelled order, or why it cannot be cancelled.</returns>
++    public Result<Order> Cancel() =>
++        Status == OrderStatus.Pending
++            ? Result.Success(this with { Status = OrderStatus.Cancelled })
++            : Result.Failure<Order>($"Only pending orders can be cancelled; this order is {Status}.");
+ }
+diff --git a/src/Orders.Infrastructure/EfOrderRepository.cs b/src/Orders.Infrastructure/EfOrderRepository.cs
+index 70be76f..d8fc839 100644
+--- a/src/Orders.Infrastructure/EfOrderRepository.cs
++++ b/src/Orders.Infrastructure/EfOrderRepository.cs
+@@ -21,6 +21,12 @@ public sealed class EfOrderRepository(OrdersDbContext db) : IOrderRepository
+         await db.SaveChangesAsync(cancellationToken);
+     }
+ 
++    /// <inheritdoc />
++    public Task UpdateAsync(Order order, CancellationToken cancellationToken) =>
++        db.Orders
++            .Where(entity => entity.Id == order.Id)
++            .ExecuteUpdateAsync(setters => setters.SetProperty(entity => entity.Status, order.Status.ToString()), cancellationToken);
++
+     private static Order ToDomain(OrderEntity entity) => new()
+     {
+         Id = entity.Id,

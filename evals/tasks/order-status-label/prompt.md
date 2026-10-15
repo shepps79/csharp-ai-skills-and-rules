@@ -1,0 +1,1 @@
+The front end shows raw status names like "Pending" to customers. Add a human-readable status label to the orders the API returns — e.g. "Awaiting shipment" for pending, "On its way" for shipped, "Cancelled" for cancelled.

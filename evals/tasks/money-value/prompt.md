@@ -1,0 +1,1 @@
+Order line prices are bare decimals, so we have no idea what currency anything is in — we're about to start selling in euros as well as pounds. Give prices a currency and use that for order line prices throughout.

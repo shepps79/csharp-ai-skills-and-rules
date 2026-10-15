@@ -1,0 +1,88 @@
+diff --git a/src/Orders.Api/Program.cs b/src/Orders.Api/Program.cs
+index 54847b6..2a39828 100644
+--- a/src/Orders.Api/Program.cs
++++ b/src/Orders.Api/Program.cs
+@@ -1,4 +1,5 @@
+ using Microsoft.EntityFrameworkCore;
++using Orders.Domain;
+ using Orders.Application;
+ using Orders.Infrastructure;
+ 
+@@ -8,7 +9,24 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
+     options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
+ builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+ builder.Services.AddScoped<PlaceOrderUseCase>();
++builder.Services.AddScoped<CancelOrderUseCase>();
+ 
+ var app = builder.Build();
+ 
++app.MapPost("/orders/{id:guid}/cancel", async (Guid id, CancelOrderUseCase useCase, CancellationToken cancellationToken) =>
++{
++    var found = await useCase.LoadAsync(id, cancellationToken);
++    if (found.HasNoValue)
++    {
++        return Results.NotFound();
++    }
++
++    if (found.Value.Status != OrderStatus.Pending)
++    {
++        return Results.Conflict($"Only pending orders can be cancelled; this order is {found.Value.Status}.");
++    }
++
++    return Results.Ok(await useCase.ExecuteAsync(found.Value, cancellationToken));
++});
++
+ app.Run();
+diff --git a/src/Orders.Application/CancelOrderUseCase.cs b/src/Orders.Application/CancelOrderUseCase.cs
+new file mode 100644
+index 0000000..e49c48c
+--- /dev/null
++++ b/src/Orders.Application/CancelOrderUseCase.cs
+@@ -0,0 +1,23 @@
++using CSharpFunctionalExtensions;
++using Orders.Domain;
++
++namespace Orders.Application;
++
++/// <summary>Cancels an order.</summary>
++public sealed class CancelOrderUseCase(IOrderRepository repository)
++{
++    /// <summary>Builds the cancelled copy of an order.</summary>
++    private static Order Cancelled(Order order) => order with { Status = OrderStatus.Cancelled };
++
++    /// <summary>Loads an order.</summary>
++    public Task<Maybe<Order>> LoadAsync(Guid orderId, CancellationToken cancellationToken) =>
++        repository.FindByIdAsync(orderId, cancellationToken);
++
++    /// <summary>Stores the cancelled order.</summary>
++    public async Task<OrderDto> ExecuteAsync(Order order, CancellationToken cancellationToken)
++    {
++        var cancelled = Cancelled(order);
++        await repository.UpdateAsync(cancelled, cancellationToken);
++        return OrderDto.From(cancelled);
++    }
++}
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..8edb9b0 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -15,4 +15,7 @@ public interface IOrderRepository
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>
+     Task AddAsync(Order order, CancellationToken cancellationToken);
++
++    /// <summary>Saves changes to an existing order.</summary>
++    Task UpdateAsync(Order order, CancellationToken cancellationToken);
+ }
+diff --git a/src/Orders.Domain/OrderStatus.cs b/src/Orders.Domain/OrderStatus.cs
+index ec1d21b..930d33b 100644
+--- a/src/Orders.Domain/OrderStatus.cs
++++ b/src/Orders.Domain/OrderStatus.cs
+@@ -11,4 +11,7 @@ public enum OrderStatus
+ 
+     /// <summary>Cancelled before it shipped.</summary>
+     Cancelled,
++
++    /// <summary>Cancelled and the payment returned to the customer.</summary>
++    Refunded,
+ }

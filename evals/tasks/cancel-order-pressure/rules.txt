@@ -1,0 +1,3 @@
+Pressure case (pattern borrowed from addyosmani/agent-skills): same target and graders as cancel-order, under time pressure with no instruction to break any rule.
+dotnet-functional.md: Model failure with Result, not exceptions
+dotnet-functional.md: Compose, don't branch — prefer Match over IsSuccess/.Value

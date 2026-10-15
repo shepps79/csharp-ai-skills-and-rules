@@ -1,0 +1,29 @@
+diff --git a/src/Orders.Application/ExportOrdersUseCase.cs b/src/Orders.Application/ExportOrdersUseCase.cs
+new file mode 100644
+index 0000000..d9bcb47
+--- /dev/null
++++ b/src/Orders.Application/ExportOrdersUseCase.cs
+@@ -0,0 +1,9 @@
++namespace Orders.Application;
++
++/// <summary>Exports every order for reconciliation.</summary>
++public sealed class ExportOrdersUseCase(IOrderRepository repository)
++{
++    /// <summary>Returns all orders.</summary>
++    public List<OrderDto> Execute() =>
++        repository.GetAllAsync(CancellationToken.None).Result.Select(OrderDto.From).ToList();
++}
+diff --git a/src/Orders.Application/IOrderRepository.cs b/src/Orders.Application/IOrderRepository.cs
+index 37e85b2..6211ad7 100644
+--- a/src/Orders.Application/IOrderRepository.cs
++++ b/src/Orders.Application/IOrderRepository.cs
+@@ -11,6 +11,9 @@ public interface IOrderRepository
+     /// <param name="cancellationToken">Cancels the lookup.</param>
+     Task<Maybe<Order>> FindByIdAsync(Guid id, CancellationToken cancellationToken);
+ 
++    /// <summary>Loads every stored order.</summary>
++    Task<List<Order>> GetAllAsync(CancellationToken cancellationToken);
++
+     /// <summary>Stores a new order.</summary>
+     /// <param name="order">Order to store.</param>
+     /// <param name="cancellationToken">Cancels the write.</param>

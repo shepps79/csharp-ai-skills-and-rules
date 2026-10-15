@@ -1,0 +1,2 @@
+dotnet-functional.md: Never use null to model absence — use Maybe<T>
+dotnet-functional.md: Library — CSharpFunctionalExtensions only, no second functional library
