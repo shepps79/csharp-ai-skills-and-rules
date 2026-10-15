@@ -93,16 +93,24 @@ module.exports = {
       missing.length ? `TreatWarningsAsErrors missing: ${missing.join(', ')}` : `${projects.length} projects`);
   },
 
-  // Domain references no project; Application references only Domain.
+  // Domain references no project; Application references only Domain; a web API adapter drives Application;
+  // Infrastructure never references the API.
   layeredProjects: (_, { metadata }) => {
     const projects = metadata.changedFiles.filter((file) => file.endsWith('.csproj'));
     const references = (file) => [...read(metadata, file).matchAll(/<ProjectReference\s+Include="([^"]+)"/g)]
       .map((m) => path.basename(m[1]));
     const domain = projects.filter((file) => /\.Domain\.csproj$/.test(file));
     const application = projects.filter((file) => /\.Application\.csproj$/.test(file));
+    const infrastructure = projects.filter((file) => /\.Infrastructure\.csproj$/.test(file));
+    const web = projects.filter((file) => /Sdk="Microsoft\.NET\.Sdk\.Web"/.test(read(metadata, file)));
+    const webNames = web.map((file) => path.basename(file));
+    const drivesApplication = (file) => references(file).some((ref) => /\.Application\.csproj$/.test(ref));
     const problems = [
       ...(domain.length ? [] : ['no *.Domain project']),
       ...(application.length ? [] : ['no *.Application project']),
+      ...(web.some(drivesApplication) ? [] : ['no web API project referencing *.Application']),
+      ...infrastructure.flatMap((file) => references(file).filter((ref) => webNames.includes(ref))
+        .map((ref) => `${file} references ${ref}`)),
       ...domain.flatMap((file) => references(file).map((ref) => `${file} references ${ref}`)),
       ...domain.filter((file) => /Include="Microsoft\.(AspNetCore|EntityFrameworkCore)/.test(read(metadata, file)))
         .map((file) => `${file} depends on a framework package`),
