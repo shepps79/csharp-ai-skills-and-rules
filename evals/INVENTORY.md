@@ -151,37 +151,42 @@ Every task also runs the **gate**: `dotnet build` (warnings as errors), `dotnet 
 | No service locator outside the composition root | S: no `GetService`/`GetRequiredService` outside `Program.cs`/Registrations | `configurable-limit` |
 | Unit tests use TestContainers (conflicts with testing.md) | resolved by tension 3: Moq wins | `unit-tests` |
 
-## Tasks (26)
+## Tasks (29)
 
-Prompts are worded the way a user would ask. The middle column is the hidden target, not what the prompt says.
+Prompts are worded the way a user would ask. The Targets column is the hidden target, not what the prompt says. Graders: **S** = `check.sh`, **J** = calibrated LLM judge (`rubric.md`), **B** = transcript checks, **D** = diff scope. Every task also runs the gate.
 
 | Task | Targets | Graders |
 |---|---|---|
-| `order-helpers` | extension blocks, LINQ | S |
+| `order-helpers` | extension blocks, LINQ over loops | S |
 | `field-keyword` | `field` keyword | S |
 | `match-result` | Match over IsSuccess (tension 2) | S |
-| `find-order` | Maybe over null, CSharpFunctionalExtensions | S + J |
-| `cancel-order` | Result over throw, early return, positive logic, purity, comments, ordering | S + J |
-| `add-package` | CPM, `dotnet add`, separate commit, conventional commits | S + B |
-| `new-project` | flat layout, TreatWarningsAsErrors, dependency direction, empty-class shorthand | S |
-| `list-orders-endpoint` | hexagonal layering, minimal API, records, immutability, minimum code | S + J |
-| `unit-tests` | test stack, naming, structure, token, Moq (tension 3) | S + J |
-| `internal-tests` | no InternalsVisibleTo | S |
-| `integration-test` | WebApplicationFactory, Trait | S |
-| `configurable-limit` | options, ValidateOnStart, composition root, required, lifetimes | S + J |
-| `export-orders` | IAsyncEnumerable, no `.Result`, no `async void` | S + J |
-| `order-status-label` | switch expressions, NotImplementedException, nested patterns | S |
+| `find-order` | Maybe over null, CSharpFunctionalExtensions only | S |
+| `cancel-order` | Result over throw, no mutation, positive conditions, member ordering, comments, nothing speculative | S + J |
+| `cancel-order-pressure` | same as `cancel-order`, under time pressure | S |
+| `export-orders` | IAsyncEnumerable, no `.Result`/`.Wait()`, no `async void` | S |
+| `order-status-label` | switch expressions, NotImplementedException arm, nested patterns | S |
 | `money-value` | `readonly record struct` | S |
 | `raw-sql-report` | raw string literals | S |
-| `order-timestamps` | port earns its place | S + J |
-| `duplicate-order` | error translation at the boundary | S + J |
+| `add-package` | CPM, `dotnet add`, package change in its own commit, conventional commits (none yet) | S + B |
+| `new-project` | flat layout (none yet for prod), TreatWarningsAsErrors, ports, dependency direction | S |
+| `unit-tests` | test naming, structure, token, Moq on ports (tension 3), no logic, TheoryDataRow | S |
+| `unit-tests-pressure` | same as `unit-tests`, under time pressure | S |
+| `internal-tests` | no InternalsVisibleTo | S |
+| `integration-test` | WebApplicationFactory, Testcontainers, Category trait, flat layout | S |
+| `configurable-limit` | options, ValidateOnStart, IHostApplicationBuilder composition root, no service locator | S |
 | `api-docs` | built-in OpenAPI, not Swashbuckle | S |
-| `boy-scout` | cleanup in touched methods only (tension 1); fixture has cruft in two methods | D |
-| `adjacent-bug` | flag, don't fix; fixture plants a bug | D + B |
-| `ambiguous-request` | ask before assuming | B/J |
-| `unknown-fact` | say "I'm not sure" | B/J |
-| `generated-file` | don't edit auto-generated files | S |
-| `greenfield-loans` (**skeleton**) | Scaffolding from empty: flat layout, CPM, TreatWarningsAsErrors, net10.0, hexagonal project references and package purity, test stack (Moq in unit tests, Testcontainers in integration tests), CSharpFunctionalExtensions, no Swashbuckle or InternalsVisibleTo, plus the Match / extension-block / no-loop code checks | S |
-| `control-total-bug` | **control**: no rule targets it; detects side effects | gate + D |
+| `list-orders-endpoint` | hexagonal layering, records, immutability, minimum code | S + J |
+| `duplicate-order` | error translation at the boundary, Result + Match | S + J |
+| `order-timestamps` | port earns its place (TimeProvider allowed) | S + J |
+| `boy-scout` | clean touched methods only (tension 1) | S + D |
+| `generated-file` | don't edit auto-generated files (none yet) | S |
+| `adjacent-bug` | flag, don't fix (none yet) | S + J |
+| `ambiguous-request` | ask before assuming (none yet) | J |
+| `unknown-fact` | say "I'm not sure" (none yet) | J |
+| `control-total-bug` | **control**: no rule; catches over-reach | S + D |
+| `control-rename-config` | **control/precision**: no rule; catches unrequested refactors | D |
+| `greenfield-loans` (**skeleton**) | scaffolding from empty: layout, CPM, TreatWarningsAsErrors, net10.0, hexagonal references and package purity, test stack, CSharpFunctionalExtensions, no Swashbuckle/InternalsVisibleTo, plus code checks | S |
 
-Each grader has `selftest/pass.patch` and `selftest/fail.patch` (and transcripts for B). `evals/selftest.sh` proves that every check goes red on the fail sample and green on the pass sample, and that the fixture builds clean with the `.editorconfig` template.
+Every run also records `verified_after_edit` (build/test after the last edit, the former "loop until verified" rule) and `skills_fired` as side metrics.
+
+Not graded yet: service lifetimes, AAA comments, test-data builders, `ValueTask`/`Span` (no realistic task), and whether integration tests pass (the gate builds them but skips `Category=Integration`).
