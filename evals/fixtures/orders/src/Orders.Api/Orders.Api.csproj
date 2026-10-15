@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../Orders.Application/Orders.Application.csproj" />
+    <!-- Only the composition root uses it, to bind the outbound port to its adapter. -->
+    <ProjectReference Include="../Orders.Infrastructure/Orders.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
