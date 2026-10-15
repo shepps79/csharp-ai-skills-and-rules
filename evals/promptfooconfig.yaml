@@ -112,9 +112,9 @@ tests:
           The output is a git diff adding unit tests for the OrderSummary returned by OrderService.PlaceOrderAsync,
           in a C# xUnit v3 project, with Moq for the IOrderRepository port.
           Pass only if all of these hold:
-          - Expected values are worked out independently as literals (e.g. 2 x 12.50m + 5m = 30.00m, "cust-1",
-            "Confirmed"), never computed by production code (OrderSummary.From, Order.Total, LineTotal) or a copy of its
-            formula, and no assertion only restates a stubbed return value or the arranged input object.
+          - Expected values are fixed values or arithmetic on fixed numbers (e.g. 30.00m or 2 * 12.50m + 5m, "cust-1",
+            "Confirmed"), never computed from the arranged objects (e.g. request.Lines.Sum(...)) or by production code
+            (OrderSummary.From, Order.Total, LineTotal), and no assertion only restates a stubbed return value.
           - The test data can expose a wrong total: at least one line with a quantity above 1, and more than one line.
           - The summary's id is tied to the stored order (e.g. captured from the AddAsync call), and no change is made to
             production code.
