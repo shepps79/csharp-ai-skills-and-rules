@@ -7,14 +7,16 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and nine tasks: `find-order` (null trap), `place-order-tests`
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and ten tasks: `find-order` (null trap), `place-order-tests`
   (mocks vs TestContainers conflict), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
   mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
   hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the
-  rules should lead to `TimeProvider`), `greenfield-inventory` (new service).
-- 28 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+  rules should lead to `TimeProvider`), `customer-name` (typed `HttpClient`, hidden HTTP acceptance tests),
+  `greenfield-inventory` (new service).
+- 30 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
-  contract test for `order-limits`.
+  contract tests for `order-limits` and `customer-name`. The `customer-name` tests stub every `IHttpClientFactory`
+  client's primary handler, so code that creates its own `HttpClient` fails them.
 - Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores
   the line coverage of the production files the agent changed.
 - Ablation (`config.excludeRules`), pairwise judging (`npm run eval-pairwise`), a cross-eval fingerprint guard
@@ -26,8 +28,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
-   runs; at the last baseline's cost per run, roughly $17 and 1–1.5 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 10 tasks × 2 variants × 5 = 100 agent
+   runs; at the last baseline's cost per run, roughly $19 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
    `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
@@ -42,7 +44,7 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    Add an equivalent `excludeSkills` to measure what each skill adds. Until then, skill content is judged only
    indirectly: the `order-limits` and `add-telemetry` rubrics grade what those skills teach, so a low score can't
    tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
-6. **More hidden acceptance tests.** Only `order-limits` fixes a contract in its task text. `find-order`,
+6. **More hidden acceptance tests.** Only `order-limits` and `customer-name` fix a contract in their task text. `find-order`,
    `cancel-order` and `get-order-mocked` leave method names to the agent, so they can't have contract tests without
    changing their task text, which changes the yardstick.
 7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
@@ -61,6 +63,9 @@ These are measured, not fixed; they are inputs for the next round of rule change
   The template exempts test projects, so the build doesn't flag it, but the rules still say both.
 - `hexagonal-architecture.md` names a custom `IClock` as its example clock port, while `dotnet.md` prefers built-ins
   (`System.TimeProvider`) and no rule names `TimeProvider` (`night-review`, checks `noSystemClock` and `usesTimeProvider`).
+- No rule covers outbound HTTP: typed clients from `IHttpClientFactory`, no `new HttpClient`, and
+  `AddStandardResilienceHandler` are graded (`customer-name`, `reserve-stock`; checks `typedHttpClient` and
+  `httpResilience`) but only Microsoft's guidance drives them. Expect them to fail until a rule or skill teaches them.
 - `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
 
 ## Compiler-enforced rules
