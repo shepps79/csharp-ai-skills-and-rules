@@ -19,12 +19,15 @@ try {
 const exported = JSON.parse(fs.readFileSync(exportPath, 'utf8'));
 fs.rmSync(exportPath);
 
+// promptfoo also puts failed-assertion reasons in `error`; only failureReason 2 means the run itself errored.
+const ERRORED = 2;
+
 const rows = exported.results.results.map((r) => ({
   variant: r.provider.label ?? r.provider.id,
   task: r.testCase.description.split(' ')[0],
-  quality: r.error || !r.response?.metadata?.dotnet?.buildOk ? 0 : r.score,
+  quality: r.failureReason === ERRORED || !r.response?.metadata?.dotnet?.buildOk ? 0 : r.score,
   passed: r.success,
-  errored: Boolean(r.error),
+  errored: r.failureReason === ERRORED,
   fingerprint: r.response?.metadata?.fingerprint?.hash,
 }));
 
@@ -38,7 +41,8 @@ const table = Object.fromEntries([...new Set(rows.map((r) => r.variant))].map((v
     ...Object.fromEntries(byTask),
     'all checks pass': percent(mine.map((r) => Number(r.passed))),
     runs: mine.length,
-    errors: mine.filter((r) => r.errored).length,
+    'failed checks': mine.filter((r) => !r.passed && !r.errored).length,
+    'run errors': mine.filter((r) => r.errored).length,
   }];
 }));
 
