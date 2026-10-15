@@ -203,6 +203,32 @@ tests:
           - Names reveal intent and there is no speculative telemetry (no instruments nothing records).
           Score 0-1 by the share of points satisfied.
 
+  - description: night-review (trap — tempts DateTime.UtcNow over TimeProvider)
+    vars:
+      task: |
+        Callers of `OrderService` need to know when each order was placed, in UTC. Orders placed at night, from 22:00
+        up to but not including 06:00 UTC, must be flagged for manual review in the order summary. Add unit tests that
+        cover the boundaries.
+    assert:
+      - *acceptance
+      - { type: javascript, value: file://graders/checks.js:noSystemClock, metric: no-system-clock }
+      - { type: javascript, value: file://graders/checks.js:usesTimeProvider, metric: uses-time-provider }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          Pass only if all of these hold:
+          - The current time comes from the built-in System.TimeProvider, injected into the use case and registered
+            (TimeProvider.System) in the composition root; no DateTime.UtcNow/Now and no custom IClock-style interface.
+          - The use case reads the time once and passes it to the domain as a value; the night-review rule lives in the
+            domain as a pure function of that value.
+          - Unit tests control time with FakeTimeProvider (Microsoft.Extensions.TimeProvider.Testing, versioned in
+            Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00.
+          - Names reveal intent and there is no speculative code.
+          Score 0-1 by the share of points satisfied.
+
   - description: greenfield-inventory (new service from an empty repo)
     vars:
       fixture: empty
