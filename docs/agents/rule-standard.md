@@ -80,3 +80,5 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 11. **No human scaffolding.** No context, audience, principles, references, TL;DR, waiver process or quality gates.
 12. **Size.** Each body under 12,000 characters (the pi-rules and codex-rules per-rule cap); all bodies together under
     40,000 characters, since every session loads them all.
+13. **Language.** Write rule text in ASD-STE100 Simplified Technical English: short sentences, active voice, one
+    meaning per word, the imperative for instructions. Code identifiers and named styles keep their own names.
