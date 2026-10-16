@@ -1,122 +1,83 @@
-# Functional Style C# Rules
+---
+description: Functional C# with errors as values, Maybe and immutability
+alwaysApply: true
+---
+# Functional style
 
-**Applies to**: All C# code
+MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 
-Use functional patterns whenever possible, especially for data transformation and validation. Prefer pure functions, immutability, and explicit types for absence and failure over `null` and exceptions. Functional patterns are preferred over imperative patterns.
+## Styles
+- **FUNC-001** MUST apply Scott Wlaschin's railway-oriented programming with CSharpFunctionalExtensions
+  (`Result<T, E>`, `UnitResult<E>`, `Maybe<T>`, `Bind`, `Map`, `Ensure`, `Tap`, `Match`).
+- **FUNC-002** MUST apply Gary Bernhardt's functional core, imperative shell: Domain is pure, and side effects occur
+  only in adapters.
 
-## Pure functions and no side effects
+## Rules
+- **FUNC-003** MUST return each expected failure as a value (`Result<T, Error>` or `UnitResult<Error>`): validation,
+  business rules, not found and infrastructure failures — the signature then makes the caller handle it.
+- **FUNC-004** MUST NOT throw, unless for a programmer error (`ArgumentNullException.ThrowIfNull`,
+  `UnreachableException`), a broken invariant or stored data that fails a domain `Create` — an exception does not
+  show in the signature.
+- **FUNC-005** MUST use the `Error` record and the `ErrorKind` enum below, one time per service, in Domain. MUST NOT
+  use string errors (`Result<T>`) — a caller maps the kind to a response without parsing text.
+- **FUNC-006** MUST return `Result<Maybe<T>, Error>` from a port lookup that can find nothing. The use case changes absence into `Error.NotFound(...)` when absence is a failure for its caller.
+  Use cases MUST return `Result<T, Error>` or `UnitResult<Error>`, never `Maybe<T>`.
+- **FUNC-007** MUST, in an adapter, catch only the named exceptions of the technology that it wraps (`DbException`,
+  `DbUpdateException`, `HttpRequestException`, `TimeoutRejectedException`, `BrokenCircuitException`) and return an
+  `Error` (a unique-key violation is `Conflict`, an outage is `Unavailable`). MUST NOT catch `Exception`. MUST let
+  `OperationCanceledException` go up — other exceptions are bugs and go to the global 500 handler (HEX-015).
+- **FUNC-008** MUST chain fallible steps with `Bind`, `Map`, `Ensure` and `Tap`, and resolve the result with `Match` at
+  the edge. In production code, MUST NOT read `IsSuccess` or `HasValue` and then `.Value` or `.Error` — that brings
+  back the unchecked access that the types remove.
+- **FUNC-009** MUST combine independent `Validation` results with `Result.Combine` — the caller then gets all
+  validation messages at once. Combine only `Validation` errors.
+- **FUNC-010** MUST NOT use `null` or `T?` for absence in Application or Domain. Use `T?` only at the edge, where JSON
+  or a framework API gives `null`, and change it into `Maybe<T>` immediately (`Maybe.From`) — the compiler does not
+  make a caller handle `null`.
+- **FUNC-011** MUST NOT use the null-forgiving operator `!` — it hides a possible `null`.
+- **FUNC-012** MUST keep functions pure: the result depends only on the arguments, with no I/O, no field writes and no
+  static state. Application does I/O only through ports — pure code is testable without doubles.
+- **FUNC-013** MUST NOT change an argument or a captured variable. Return a new value.
+- **FUNC-014** MUST hold collections in immutable types (`ImmutableArray<T>`, `FrozenDictionary<TKey, TValue>`) and
+  expose `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>`, never `List<T>` — a caller must not change the state.
+- **FUNC-015** SHOULD use LINQ instead of `for`, `foreach` or `while`, unless e.g. a `Span<T>` hot path needs a loop —
+  a pipeline tells what the code does, not how.
 
-- A function's output must depend only on its inputs. Given the same arguments it returns the same result, and it mutates nothing observable (no field writes, no static state, no I/O interleaved with computation).
-- Keep side effects (DB writes, HTTP calls, logging) at the edges — the adapters — and keep the domain/application core pure. This is the same boundary the [[hexagonal-architecture]] rules draw; functional purity is how the core stays testable without mocks.
-- Do not mutate arguments. Return a new value instead of writing back into a parameter or a captured variable.
-
-## Immutability
-
-- Use `readonly record struct` / `record` for data (see the Records idiom in [[dotnet-csharp14-idioms]]), `init`-only properties, and `readonly` fields. Model data as immutable by default; make mutability the deliberate exception.
-- Prefer immutable collections (`ImmutableArray<T>`, `ImmutableList<T>`, `FrozenDictionary<TKey,TValue>` for read-heavy lookups) or return `IReadOnlyList<T>` / `IReadOnlyDictionary<,>` from public APIs. Never expose a mutable `List<T>` you intend callers not to change.
-- Build new collections with LINQ and collection expressions rather than allocating then mutating.
-
-## Prefer LINQ over loops
-
-Avoid `for` / `while` / `foreach` where a LINQ pipeline expresses the same transformation. Prefer `Select`, `Where`, `Aggregate`, `SelectMany`, `Zip`, `GroupBy`.
+## Examples
+The error type (in Domain), and a use case that is one railway:
 
 ```csharp
-// BAD : imperative accumulation
-var totals = new List<decimal>();
-foreach (var order in orders)
+/// <summary>The kind of failure, which the inbound adapter maps to a response.</summary>
+public enum ErrorKind
 {
-    if (order.IsPaid)
-    {
-        totals.Add(order.Total);
-    }
+    /// <summary>The input breaks a rule.</summary>
+    Validation,
+    /// <summary>The requested item does not exist.</summary>
+    NotFound,
+    /// <summary>The change conflicts with the current state.</summary>
+    Conflict,
+    /// <summary>A dependency failed or did not respond.</summary>
+    Unavailable,
 }
 
-// GOOD : declarative pipeline
-var totals = orders.Where(o => o.IsPaid).Select(o => o.Total).ToList();
-```
-
-Keep a loop only when it is genuinely clearer (complex short-circuiting, `Span<T>` hot paths, or when LINQ would force multiple enumerations of an expensive source).
-
-## Expression-bodied members
-
-For members with a single expression, prefer expression-bodied over block-bodied.
-
-```csharp
-// BAD
-public int Add(int a, int b)
+/// <summary>A failure value; <see cref="Combine"/> merges validation messages.</summary>
+public sealed record Error(ErrorKind Kind, IReadOnlyList<string> Messages) : ICombine
 {
-    return a + b;
+    /// <summary>Creates a validation error.</summary>
+    public static Error Validation(string message) => new(ErrorKind.Validation, [message]);
+
+    /// <summary>Creates a not-found error.</summary>
+    public static Error NotFound(string message) => new(ErrorKind.NotFound, [message]);
+
+    /// <inheritdoc />
+    public ICombine Combine(ICombine value) => this with { Messages = [.. Messages, .. ((Error)value).Messages] };
 }
 
-// GOOD
-public int Add(int a, int b) => a + b;
+/// <summary>Confirms a pending order. Returns Validation, NotFound or Unavailable.</summary>
+public Task<Result<OrderDto, Error>> ConfirmAsync(Guid orderId, CancellationToken cancellationToken) =>
+    OrderId.Create(orderId)
+        .Bind(id => orders.FindPendingAsync(id, cancellationToken))
+        .Bind(found => found.ToResult(Error.NotFound($"No pending order {orderId}.")))
+        .Bind(pending => pending.Confirm(timeProvider.GetUtcNow()))
+        .Bind(confirmed => orders.SaveAsync(confirmed, cancellationToken).Map(() => OrderDto.From(confirmed)));
 ```
-
-## Never use `null` to model absence — use `Maybe<T>`
-
-`null` is not a value the caller is forced to handle; it is a landmine. Model "there might be nothing here" with `Maybe<T>` (`Some`/`None`) so absence is part of the type and the compiler makes the caller deal with it.
-
-```csharp
-// BAD : caller can forget the null check; NRE at runtime
-public Task<Order?> FindByIdAsync(Guid id, CancellationToken ct);
-
-// GOOD : absence is explicit and must be handled
-public Task<Maybe<Order>> FindByIdAsync(Guid id, CancellationToken ct);
-
-// consume by matching, not by null-checking
-var label = order.Match(
-    Some: o => o.CustomerId,
-    None: () => "unknown");
-```
-
-- Do not return `null`, and do not accept `null` as a meaningful argument. If a parameter is optional, take `Maybe<T>` (or provide an overload), not a nullable you special-case.
-- Nullable reference types (`string?`) stay on **only** for interop at the boundary with framework/third-party APIs that hand you `null` (EF Core, `TryGet…`, config binding). Convert that `null` into `Maybe<T>` in the adapter immediately (`Maybe.From(value)`), then work with `Maybe<T>` inward. Never let a raw `null` propagate past the adapter into the domain.
-- Never "unwrap" carelessly (`.Value` on a `Maybe` without a `HasValue` guard, `!`). Resolve a `Maybe` with `Match`, `GetValueOrDefault`, `Map`, or `Bind`.
-
-## Model failure with `Result`, not exceptions
-
-Expected, recoverable failures (validation, not-found-that-matters, business-rule violations) are return values, not control flow. Use `Result` (success/failure, no value), `Result<T>` (a value or an error message), or `Result<T, TError>` (a value or a typed error).
-
-```csharp
-// BAD : exceptions for expected validation failure
-public Order Place(CreateOrderRequest request)
-{
-    if (request.Items.Count == 0)
-    {
-        throw new ValidationException("at least one item");
-    }
-    // ...
-}
-
-// GOOD : failure is a value the caller must handle
-public Result<Order> Place(CreateOrderRequest request) =>
-    request.Items.Count == 0
-        ? Result.Failure<Order>("at least one item required")
-        : Result.Success(Order.Create(request));
-```
-
-- Reserve `throw` for genuinely exceptional, non-recoverable conditions (programmer error, corrupt state, infrastructure that is down). Business outcomes are not exceptions.
-- Translate exceptions from adapters (e.g. `DbUpdateException`) into a `Result` failure at the boundary — do not leak infrastructure exceptions upward (matches [[hexagonal-architecture]]).
-- Aggregate independent validations with `Result.Combine(...)` so the caller gets **all** failures at once, not just the first.
-
-## Compose, don't branch — railway-oriented style
-
-Chain `Maybe`/`Result`-returning steps with `Map` (transform the success value) and `Bind` (sequence the next fallible step), collapsing to a concrete value only at the edge with `Match`. This replaces nested `if`/`null`-check pyramids.
-
-```csharp
-// GOOD : each step short-circuits on failure; one place resolves the outcome
-public async Task<IResult> Handle(CreateOrderRequest request, CancellationToken ct) =>
-    (await ValidateRequest(request)
-        .Bind(LoadCustomer)
-        .Bind(customer => PlaceOrder(customer, request)))
-    .Match(
-        onSuccess: order => Results.Created($"/orders/{order.Id}", order),
-        onFailure: error => Results.BadRequest(error));
-```
-
-- Avoid mixing paradigms: once a value is a `Maybe`/`Result`, keep it in the monad until the final `Match`; don't unwrap early to run imperative branches.
-- Prefer `Match` over `IsSuccess`/`HasValue` boolean checks followed by `.Value` — the boolean-then-access pattern reintroduces the very foot-gun these types remove.
-
-## Library
-
-These types are not in the BCL. This solution uses **CSharpFunctionalExtensions** (`Maybe<T>`, `Result`, `Result<T>`, `Result<T, TError>`, plus `Map`/`Bind`/`Match`/`Tap`/`Ensure`/`Combine`). Use it solution-wide rather than hand-rolling these types or mixing in a second functional library. Add it via central package management in `Directory.Packages.props`.

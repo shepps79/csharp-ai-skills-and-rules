@@ -1,151 +1,114 @@
 ---
-description: C# / .NET Domain-Driven Design principles for modeling complex systems with explicit boundaries
-globs: 
-alwaysApply: false
+description: Domain model design with DDD and type-driven design
+alwaysApply: true
 ---
-# Domain Driven Design Principles
+# Domain-driven design
 
-*Cursor rules file – C# / .NET DDD guidelines for complex software systems.*
+MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 
-> **Intent**  
-> Establish a **common language** between developers and domain experts.  
-> Create a **rich, expressive domain model** that encapsulates business logic.  
-> Apply **strategic and tactical design patterns** to manage complexity in large systems.
+## Styles
+- **DDD-001** MUST apply Eric Evans' ubiquitous language, one bounded context per service, aggregates, entities, value
+  objects and domain services. Do not apply context mapping, specifications, domain events, core-domain triage or
+  Evans' place for repository interfaces (see HEX-004).
+- **DDD-002** MUST apply the type-driven design of Scott Wlaschin's *Domain Modeling Made Functional*: make illegal
+  states unrepresentable, parse instead of validate, constrained simple types, one type for each lifecycle state.
+  Do not apply its F# workflow structure (HEX-001 gives the structure).
 
----
+## Rules
+- **DDD-003** MUST model a domain value that has a rule (an id, a quantity, an email, money) as a constrained type, not
+  as a primitive — after creation, the value is always valid.
+- **DDD-004** MUST make each type that has an invariant a `sealed record` with a private constructor, get-only or
+  `private init` properties and a static `Create` that returns `Result<T, Error>`, instead of a positional record or
+  a `readonly record struct` — their public `init`, `with` and `default` skip the validation.
+- **DDD-005** MUST NOT check again what a constrained type already guarantees — the type is the check.
+- **DDD-006** MUST parse the primitives of a request into constrained types one time, in the use case, before it calls
+  the domain — Presentation cannot see Domain, and the domain then gets only valid values.
+- **DDD-007** MUST NOT pass an Application DTO into Domain — Domain must not depend on Application.
+- **DDD-008** MUST model each lifecycle state of an entity as its own type, instead of a status field. A transition
+  takes the specific state type and returns the next one (`Confirm` takes `Order.Pending` and returns
+  `Result<Order.Confirmed, Error>`) — an invalid transition then does not compile.
+- **DDD-009** MUST make the state types sealed records nested in an abstract base record with a private constructor —
+  then no other type can add a state.
+- **DDD-010** MUST, when code must accept any state, use one `Match` method on the base type that has one `Func`
+  parameter for each state. MUST NOT use `switch` or `is` on state types outside `Match` — a new state adds a
+  parameter, and the build then shows each caller.
+- **DDD-011** MUST give each state type a public static `Create` that checks the invariants of that state, not the
+  transition rules — adapters use it to rebuild the state from storage; only transitions move between states.
+- **DDD-012** MUST change an entity only through its own methods, which use `with` and return a new instance — the
+  type must protect its invariants.
+- **DDD-013** MUST compare entities by `Id`, never with `==` or `Equals` — record equality compares all fields and
+  compares collections by reference.
+- **DDD-014** MUST write a domain service only for logic that spans aggregates. It is pure and stateless, uses no
+  ports and has the name of the domain activity (`PricingPolicy`) — logic of one aggregate belongs on that aggregate.
 
-## 1 Core Concepts
+## Examples
+A constrained type, and a lifecycle with two states:
 
-| Concept | Description |
-|---------|-------------|
-| **Ubiquitous Language** | Shared vocabulary between domain experts and developers that is reflected in the code, documentation, and conversations. |
-| **Bounded Context** | Explicit boundary within which a model applies, isolating it from other parts of the system with its own ubiquitous language. |
-| **Context Map** | Documentation of how bounded contexts relate to each other and integrate at their boundaries. |
-| **Domain Model** | Object model expressing domain concepts, relationships, and business rules, focusing on behavior over data. |
+```csharp
+/// <summary>A count of items that is always greater than zero.</summary>
+public sealed record Quantity
+{
+    private Quantity(int value) => Value = value;
 
----
+    /// <summary>The count.</summary>
+    public int Value { get; }
 
-## 2 Strategic Design
+    /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when <paramref name="value"/> is not positive.</summary>
+    public static Result<Quantity, Error> Create(int value) =>
+        value > 0 ? new Quantity(value) : Error.Validation("Quantity must be greater than zero.");
+}
 
-### 2.1 Bounded Contexts
+/// <summary>An order in one of its lifecycle states.</summary>
+public abstract record Order
+{
+    private Order(OrderId id, ImmutableArray<OrderLine> lines)
+    {
+        Id = id;
+        Lines = lines;
+    }
 
-* Define explicit boundaries around models where terms and concepts have consistent meaning
-* Each context maintains its own ubiquitous language and model
-* A large system will typically have multiple bounded contexts
-* Organize code structure to reflect these boundaries (e.g., separate projects or namespaces)
+    /// <summary>The identity of the order.</summary>
+    public OrderId Id { get; }
 
-### 2.2 Context Mapping
+    /// <summary>The ordered lines; never empty.</summary>
+    public ImmutableArray<OrderLine> Lines { get; }
 
-Document relationships between bounded contexts with specific patterns:
+    /// <summary>Runs the function for the current state.</summary>
+    public T Match<T>(Func<Pending, T> pending, Func<Confirmed, T> confirmed) => this switch
+    {
+        Pending order => pending(order),
+        Confirmed order => confirmed(order),
+        _ => throw new UnreachableException(),
+    };
 
-| Pattern | Description |
-|---------|-------------|
-| **Anticorruption Layer** | Translation layer that isolates a system from another context/legacy system |
-| **Shared Kernel** | Common code shared between two contexts with explicit agreement on shared elements |
-| **Customer/Supplier** | Upstream/downstream relationship where downstream depends on upstream |
-| **Conformist** | Downstream team adopts the model of upstream team without translation |
-| **Partnership** | Two contexts with mutual dependency and collaborative integration |
-| **Open Host Service** | Well-defined protocol or interface for integration with multiple contexts |
-| **Published Language** | Shared, well-documented format for transferring data between contexts |
+    /// <summary>An order that is not yet confirmed.</summary>
+    public sealed record Pending : Order
+    {
+        private Pending(OrderId id, ImmutableArray<OrderLine> lines)
+            : base(id, lines)
+        {
+        }
 
-### 2.3 Core Domain
+        /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
+        public static Result<Pending, Error> Create(OrderId id, ImmutableArray<OrderLine> lines) =>
+            lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new Pending(id, lines);
 
-* Identify the **core domain** — the part with highest business value and differentiation
-* Distinguish from **supporting domains** (important but not unique) and **generic domains** (commodities)
-* Invest effort proportional to business value — focus most energy on core domain
-* Consider using generic solutions for generic domains (off-the-shelf, open source)
+        /// <summary>Confirms the order at <paramref name="confirmedAt"/>.</summary>
+        public Result<Confirmed, Error> Confirm(DateTimeOffset confirmedAt) => Confirmed.Create(Id, Lines, confirmedAt);
+    }
 
----
+    /// <summary>An order that is confirmed.</summary>
+    public sealed record Confirmed : Order
+    {
+        private Confirmed(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt)
+            : base(id, lines) => ConfirmedAt = confirmedAt;
 
-## 3 Tactical Design
+        /// <summary>The instant of confirmation.</summary>
+        public DateTimeOffset ConfirmedAt { get; }
 
-### 3.1 Building Blocks
-
-#### Value Objects
-
-* Immutable objects defined by their attributes, without identity (`record` / `readonly record struct`)
-* Examples: Money, Color, Address, DateRange
-* Two value objects with the same properties are considered equal
-* Designed to be passed by value, not reference
-* Encapsulate domain rules related to their composition
-
-#### Entities
-
-* Objects defined by a thread of continuity and identity
-* Identity is maintained regardless of attribute changes
-* Examples: User, Order, Account
-* Two entities with the same ID represent the same object
-* Focus on behavior rather than attributes
-* Encapsulate business rules specific to the entity
-
-#### Aggregates
-
-* Cluster of associated objects treated as a unit for data changes
-* One entity serves as the **aggregate root** — the only access point from outside
-* All access to internal objects must go through the root
-* Transactional consistency boundary — one transaction per aggregate
-* References between aggregates use identity (not direct object references)
-* Keep aggregates small to avoid consistency conflicts
-
-#### Domain Events
-
-* Record of something significant that happened in the domain
-* Named in past tense (e.g., OrderPlaced, PaymentReceived)
-* Immutable and typically include a timestamp
-* Used for communication between bounded contexts
-* Enable eventual consistency and event sourcing
-* Can trigger workflows or be used for audit trails
-
-#### Repositories
-
-* Provide collection-like interface for accessing aggregates
-* Abstract underlying persistence mechanisms
-* Retrieve complete aggregates, not partial objects
-* Usually one repository per aggregate type
-* Allow querying by ID and limited criteria
-* Enforce persistence ignorance in the domain model
-
-#### Domain Services
-
-* Operations that don't conceptually belong to any entity or value object
-* Represent domain concepts that are processes or transformations
-* Stateless operations involving multiple domain objects
-* Named after activities or actions in the domain
-* Contain significant business logic, not just CRUD
-
-#### Specifications
-
-* Encapsulate selection criteria or business rules
-* Can be composed using boolean logic (and, or, not)
-* Used for validation, selection, and creation of objects
-* Express business rules in a clear, reusable way
-* Can be used in-memory or translated to database queries (e.g. `Expression<Func<T, bool>>` with EF Core)
-
----
-
-## 4 Domain Model Patterns
-
-These patterns help implement a rich domain model:
-
-### 4.1 Model Integrity Patterns
-
-* **Assertion** - Guarantee state consistency through invariant checks
-* **Side-effect Free Functions** - Ensure predictable behavior  
-* **Intention-Revealing Interfaces** - Name elements to reflect their purpose
-* **Closure of Operations** - Operations on domain objects return same type
-
-### 4.2 Supple Design
-
-* **Intention-Revealing Interfaces** - Methods with names that reflect their purpose
-* **Conceptual Contours** - Split classes according to conceptual "seams"
-* **Standalone Classes** - Minimize dependencies between domain classes
-
----
-
-### TL;DR
-
-1. Start with **strategic design**: identify bounded contexts and their relationships.
-2. Develop a **ubiquitous language** with domain experts and reflect it in your code.
-3. Implement **tactical patterns** to express the model: entities, value objects, aggregates.
-4. Use **repositories** for persistence and **domain services** for cross-entity operations.
-5. Capture state changes with **domain events** for traceability and integration.
+        /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
+        public static Result<Confirmed, Error> Create(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt) =>
+            lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new Confirmed(id, lines, confirmedAt);
+    }
+}
+```
