@@ -25,10 +25,11 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
   the domain — Presentation cannot see Domain, and the domain then gets only valid values.
 - **DDD-007** MUST NOT pass an Application DTO into Domain — Domain must not depend on Application.
 - **DDD-008** MUST model each lifecycle state of an entity as its own type, instead of a status field. A transition
-  takes the specific state type and returns the next one (`Confirm` takes `Order.Pending` and returns
-  `Result<Order.Confirmed, Error>`) — an invalid transition then does not compile.
-- **DDD-009** MUST make the state types sealed records nested in an abstract base record with a private constructor —
-  then no other type can add a state.
+  takes the specific state type and returns the next one (`Confirm` takes `PendingOrder` and returns
+  `Result<ConfirmedOrder, Error>`) — an invalid transition then does not compile.
+- **DDD-009** MUST make each state type a top-level `sealed record` that derives from an abstract base record with a
+  `private protected` constructor, and add each state to `Match` — C# cannot close a record hierarchy, so `Match` is
+  what makes the build show each caller.
 - **DDD-010** MUST, when code must accept any state, use one `Match` method on the base type that has one `Func`
   parameter for each state. MUST NOT use `switch` or `is` on state types outside `Match` — a new state adds a
   parameter, and the build then shows each caller.
@@ -61,7 +62,7 @@ public sealed record Quantity
 /// <summary>An order in one of its lifecycle states.</summary>
 public abstract record Order
 {
-    private Order(OrderId id, ImmutableArray<OrderLine> lines)
+    private protected Order(OrderId id, ImmutableArray<OrderLine> lines)
     {
         Id = id;
         Lines = lines;
@@ -74,41 +75,41 @@ public abstract record Order
     public ImmutableArray<OrderLine> Lines { get; }
 
     /// <summary>Runs the function for the current state.</summary>
-    public T Match<T>(Func<Pending, T> pending, Func<Confirmed, T> confirmed) => this switch
+    public T Match<T>(Func<PendingOrder, T> pending, Func<ConfirmedOrder, T> confirmed) => this switch
     {
-        Pending order => pending(order),
-        Confirmed order => confirmed(order),
+        PendingOrder order => pending(order),
+        ConfirmedOrder order => confirmed(order),
         _ => throw new UnreachableException(),
     };
+}
 
-    /// <summary>An order that is not yet confirmed.</summary>
-    public sealed record Pending : Order
+/// <summary>An order that is not yet confirmed.</summary>
+public sealed record PendingOrder : Order
+{
+    private PendingOrder(OrderId id, ImmutableArray<OrderLine> lines)
+        : base(id, lines)
     {
-        private Pending(OrderId id, ImmutableArray<OrderLine> lines)
-            : base(id, lines)
-        {
-        }
-
-        /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
-        public static Result<Pending, Error> Create(OrderId id, ImmutableArray<OrderLine> lines) =>
-            lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new Pending(id, lines);
-
-        /// <summary>Confirms the order at <paramref name="confirmedAt"/>.</summary>
-        public Result<Confirmed, Error> Confirm(DateTimeOffset confirmedAt) => Confirmed.Create(Id, Lines, confirmedAt);
     }
 
-    /// <summary>An order that is confirmed.</summary>
-    public sealed record Confirmed : Order
-    {
-        private Confirmed(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt)
-            : base(id, lines) => ConfirmedAt = confirmedAt;
+    /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
+    public static Result<PendingOrder, Error> Create(OrderId id, ImmutableArray<OrderLine> lines) =>
+        lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new PendingOrder(id, lines);
 
-        /// <summary>The instant of confirmation.</summary>
-        public DateTimeOffset ConfirmedAt { get; }
+    /// <summary>Confirms the order at <paramref name="confirmedAt"/>.</summary>
+    public Result<ConfirmedOrder, Error> Confirm(DateTimeOffset confirmedAt) => ConfirmedOrder.Create(Id, Lines, confirmedAt);
+}
 
-        /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
-        public static Result<Confirmed, Error> Create(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt) =>
-            lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new Confirmed(id, lines, confirmedAt);
-    }
+/// <summary>An order that is confirmed.</summary>
+public sealed record ConfirmedOrder : Order
+{
+    private ConfirmedOrder(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt)
+        : base(id, lines) => ConfirmedAt = confirmedAt;
+
+    /// <summary>The instant of confirmation.</summary>
+    public DateTimeOffset ConfirmedAt { get; }
+
+    /// <summary>Returns a <see cref="ErrorKind.Validation"/> error when there are no lines.</summary>
+    public static Result<ConfirmedOrder, Error> Create(OrderId id, ImmutableArray<OrderLine> lines, DateTimeOffset confirmedAt) =>
+        lines.IsEmpty ? Error.Validation("An order needs at least one line.") : new ConfirmedOrder(id, lines, confirmedAt);
 }
 ```

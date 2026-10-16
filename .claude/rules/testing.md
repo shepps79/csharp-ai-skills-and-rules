@@ -66,7 +66,7 @@ public abstract class OrderRepositoryContract
     {
         // Arrange
         var repository = CreateRepository();
-        var order = PendingOrder();
+        var order = NewPendingOrder();
         await repository.SaveAsync(order, TestContext.Current.CancellationToken);
 
         // Act
@@ -80,8 +80,8 @@ public abstract class OrderRepositoryContract
 
     protected abstract IOrderRepository CreateRepository();
 
-    private static Order.Pending PendingOrder() =>
-        Order.Pending.Create(OrderId.Create(Guid.NewGuid()).Value, [OrderLine.Create("SKU-001", 2).Value]).Value;
+    private static PendingOrder NewPendingOrder() =>
+        PendingOrder.Create(OrderId.Create(Guid.NewGuid()).Value, [OrderLine.Create("SKU-001", 2).Value]).Value;
 }
 
 public sealed class InMemoryOrderRepositoryTests : OrderRepositoryContract
