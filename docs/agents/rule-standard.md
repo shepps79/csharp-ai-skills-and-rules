@@ -1,7 +1,7 @@
 # Rule file standard
 
 How every file in `.claude/rules/` is written. Rule files are for agents only: each line costs tokens in every
-session (all rules together cost ~21.8k tokens per session in the first baseline), so a line stays only if it changes what the agent does.
+session, so a line stays only if it changes what the agent does.
 
 ## Structure
 

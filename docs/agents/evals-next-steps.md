@@ -22,6 +22,7 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
   the line coverage of the production files the agent changed.
 - Ablation (`config.excludeRules`), pairwise judging (`npm run eval-pairwise`), a cross-eval fingerprint guard
   (`npm run report -- <id> <id>` exits 1 on a mismatch) and per-variant turns, tokens, cost and minutes are in place.
+- In the first baseline, all rule files together cost ~21.8k tokens per session.
 - `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
   `env` (global setup, no repo rules) is removed too; restore it with `{ variant: env }` when needed.
 - The checks, judge prompt, fixture analyzers and tasks changed on 2026-10-15; results graded before then, including
