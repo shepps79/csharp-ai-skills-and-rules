@@ -61,40 +61,32 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 
 ## Rule problems the evals now surface
 
-These are measured, not fixed; they are inputs for the next round of rule changes.
+The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the rule that now owns it:
 
-- `hexagonal-architecture.md` "Unit test use TestContainers" vs `testing.md` Moq for ports (`place-order-tests`).
-- `testing.md`'s mocking example stubs `(Order?)null` and asserts `BeNull()`, which `dotnet-functional.md` bans
-  (`get-order-mocked`, check `noNullInTests`).
-- `hexagonal-architecture.md` "translate to an application exception" vs `dotnet-functional.md` "translate to a
-  Result" (`reserve-stock`, check `noExceptionsInApplication`). Its rubric takes the `dotnet-functional.md` side.
-- `dotnet.md` "Async methods must have the Async suffix" vs `testing.md` test names (`PlaceOrder_Returns201_…`).
-  The template exempts test projects, so the build doesn't flag it, but the rules still say both.
-- `hexagonal-architecture.md` names a custom `IClock` as its example clock port, while `dotnet.md` prefers built-ins
-  (`System.TimeProvider`) and no rule names `TimeProvider` (`night-review`, checks `noSystemClock` and `usesTimeProvider`).
-- No rule covers outbound HTTP: typed clients from `IHttpClientFactory`, no `new HttpClient`, and
-  `AddStandardResilienceHandler` are graded (`customer-name`, `reserve-stock`; checks `typedHttpClient` and
-  `httpResilience`) but only Microsoft's guidance drives them. Expect them to fail until a rule or skill teaches them.
-- No rule says to prefer a real or in-memory implementation over a Moq mock when one exists. `testing.md`'s Moq section
-  reads mock-first, and `hexagonal-architecture.md` asks for TestContainers implementations instead. The evals take the
-  "real collaborators first" stance: `preferRealCollaborators` on `find-order`, `cancel-order` and
-  `get-order-endpoint`, and `endpointTestsThroughHost` on `get-order-endpoint`. Every task also runs `mocksOnlyPorts`,
-  `noLoggerAssertions` and `noLogicInTests`, which do follow `testing.md`.
+- Unit tests with TestContainers vs Moq, and mock-first vs real collaborators: TEST-007 to TEST-009 (real classes,
+  in-memory fakes with contract tests, Moq only for a port without a fake or for a failure path). Measured by
+  `place-order-tests`, `preferRealCollaborators` and `endpointTestsThroughHost`.
+- `(Order?)null` in test examples: FUNC-006 and FUNC-010 (`Result<Maybe<T>, Error>` from lookups, no `null` inside)
+  (`get-order-mocked`, `noNullInTests`).
+- Application exceptions vs `Result`: FUNC-003, FUNC-004 and FUNC-007 (errors are values; adapters catch only named
+  infrastructure exceptions) (`reserve-stock`, `noExceptionsInApplication`).
+- `Async` suffix vs test names: NET-009 exempts test methods.
+- `IClock` vs `TimeProvider`: HEX-010 (`night-review`, `noSystemClock`, `usesTimeProvider`).
+- Outbound HTTP: HEX-011 (typed client, standard resilience handler); adapter tests: TEST-010 (WireMock.Net, no
+  mocked `HttpClient`) (`customer-name`, `reserve-stock`, `typedHttpClient`, `httpResilience`).
+- Production code as the oracle: TEST-005 (expected values worked out independently) (`independentExpectations`,
+  `killsPlantedMutants`).
+- `tests/` paths vs flat layout: TEST-002 (one `src/<Service>.Tests` project).
+
+Still open:
+
 - `place-order-tests` can't apply "real collaborators first": `InMemoryOrderRepository` has only `AddAsync`, so a test
   can't observe through it that the order was persisted, short of adding a speculative lookup. Its rubric still accepts
   Moq or the in-memory adapter. Giving the fixture's adapter a lookup would change every `orders` task, so it waits for
   a deliberate yardstick change.
-- No rule says how to test an outbound HTTP adapter, and the two that come close conflict: `hexagonal-architecture.md`
-  says to integration-test adapters against TestContainers, which a third-party HTTP service doesn't have (WireMock.Net
-  is the usual stand-in), while `testing.md` says Moq mocks only ports. Agents improvise: mocked `HttpClient`, real
-  network calls, or no adapter tests at all.
-- No rule says expected values must be worked out independently of the code under test, and the rules push the other
-  way: `clean-code.md` and `simple-design.md` demand strict DRY ("every formula lives in exactly one place") and test
-  code as clean as production code, so agents reuse the production mapper or formula as the oracle. `testing.md`'s
-  examples stub `(Order?)null` and assert `BeNull()`, and assert `CustomerId` against the value just arranged. Before
-  this check existed, 11 of 42 runs with tests asserted `Should().Be(OrderSummary.From(order))`. Measured by
-  `independentExpectations` on every task and `killsPlantedMutants` on `summary-tests`.
-- `testing.md` "Running Tests" uses `tests/MyService.UnitTests/` paths while its "Test Organization" bans a `tests/` directory.
+- The rewrite adds stances no check grades yet: `ErrorKind` mapped to ProblemDetails (HEX-013), state-per-type with
+  `Match` (DDD-008 to DDD-010), constrained types (DDD-003, DDD-004), contract tests for fakes (TEST-009). Review the
+  rubrics against them in a separate commit before the next baseline.
 
 ## Compiler-enforced rules
 
@@ -105,7 +97,7 @@ errors; copy both into any .NET repo (the analyzers need central package managem
 - Function length, parameter count, nesting depth, commented-out code, LINQ over loops, `InternalsVisibleTo`:
   no analyzer here (Sonar covers some). Sealed classes are checked by the `orders` architecture tests, and
   `noInternalsVisibleTo` and similar eval checks cover a few others.
-- The rules themselves don't yet tell the agent to use the template; worth adding to `dotnet.md`.
+- NET-002 to NET-004 tell the agent to keep the build guards, never suppress diagnostics and set them up on greenfield work.
 
 ## Things to keep in mind
 
