@@ -61,7 +61,7 @@ for a `select-best` over the same rubric, so the judge picks the better diff per
 favour a position, so run it in both orders and count a version as better only when it wins in both:
 `npm run report -- <first-id> <swapped-id>`.
 
-The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`; override per provider with `config.model`.
+The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`, both at `medium` effort; override per provider with `config.model` and `config.effort`.
 
 Fixtures: `orders` (existing service) and `empty` (greenfield). `orders` models the hexagonal layout the rules ask
 for, because agents copy what they find: Domain, Application (use-case service as inbound port, DTOs at its boundary,

@@ -13,13 +13,14 @@ const EVALS = path.join(REPO, 'evals');
 // Outside the repo so Claude Code can't discover this repo's .claude/ or CLAUDE.md from a parent directory.
 const RUNS_ROOT = path.join(os.tmpdir(), 'csharp-skills-evals');
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
+const DEFAULT_EFFORT = 'medium';
 const AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 // A deadlocked test (e.g. a stray .Result) must fail the run, not hang the whole eval.
 const DOTNET_TIMEOUT_MS = 10 * 60 * 1000;
 
 class ClaudeCodeProvider {
   constructor(options) {
-    this.config = { model: DEFAULT_MODEL, ...options.config };
+    this.config = { model: DEFAULT_MODEL, effort: DEFAULT_EFFORT, ...options.config };
     this.label = options.label;
   }
 
@@ -86,8 +87,8 @@ function copyRules(rulesRef, runDir) {
   execFileSync('tar', ['-x', '-C', runDir], { input: archive });
 }
 
-function runAgent(prompt, runDir, { variant, model }) {
-  const args = ['-p', prompt, '--model', model, '--permission-mode', 'auto',
+function runAgent(prompt, runDir, { variant, model, effort }) {
+  const args = ['-p', prompt, '--model', model, '--effort', effort, '--permission-mode', 'auto',
     '--output-format', 'stream-json', '--verbose', '--no-session-persistence'];
   const env = { ...process.env };
   if (variant === 'none') {
@@ -245,7 +246,7 @@ function summariseTranscript(events, result) {
 }
 
 // Identifies everything outside the repo that shapes a run; only compare runs whose fingerprints match.
-function fingerprint(events, { variant, model }) {
+function fingerprint(events, { variant, model, effort }) {
   const init = events.find((e) => e.subtype === 'init') ?? {};
   const configDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
   const global = (paths) => (variant === 'none' ? [] : paths.filter((file) => fs.existsSync(file))
@@ -254,6 +255,7 @@ function fingerprint(events, { variant, model }) {
   const parts = {
     claudeCode: init.claude_code_version,
     model: init.model ?? model,
+    effort,
     plugins: plugins.map((p) => `${p.name}:${p.path ? hashTree(p.path) : ''}`).sort(),
     globalFiles: global([path.join(configDir, 'settings.json'), ...withImports(path.join(configDir, 'CLAUDE.md')),
       ...['skills', 'agents', 'commands'].map((dir) => path.join(configDir, dir))]),
