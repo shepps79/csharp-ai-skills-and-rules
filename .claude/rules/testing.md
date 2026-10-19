@@ -7,8 +7,10 @@ alwaysApply: true
 ## Styles
 - **TEST-001** MUST apply Vladimir Khorikov's *Unit Testing Principles, Practices, and Patterns*: the four pillars of
   a good test, the classical school, tests of observable behaviour instead of implementation details, output-based
-  over state-based over communication-based tests, mocks only for unmanaged dependencies, the AAA pattern with
-  private factory methods, and its unit testing anti-patterns.
+  over state-based over communication-based tests, mocks only for unmanaged dependencies, the AAA pattern with its
+  sections separated by blank lines, private factory methods for arrange code that more than one test repeats, and its
+  unit testing anti-patterns. Write expected values as literals, instead of DESIGN-001's no duplication — a test that
+  gets its expected value from the production code leaks domain knowledge and cannot fail when the code is wrong.
 
 ## Rules
 - **TEST-002** MUST put the tests of a service in two projects: `src/<Service>.UnitTests/` (folders `Domain/`,
@@ -31,17 +33,15 @@ alwaysApply: true
 - **TEST-007** MUST test endpoints through `WebApplicationFactory<Program>` with the real host and the real use cases.
   In UnitTests, replace only ports with fakes, in `ConfigureTestServices`, and assert the status code, the typed body
   and one status for each `ErrorKind` that the endpoint returns. In IntegrationTests, replace nothing, point the
-  adapters at local containers (never a cloud service), and test one happy path for each endpoint plus each case that
+  adapters at local containers and stub servers (never a cloud service), and test one happy path for each endpoint plus each case that
   only real infrastructure shows. Test a repository only through these endpoint tests — cases that the fakes already
   cover give no new signal.
 - **TEST-008** MUST control time with a fake `TimeProvider`. MUST NOT use `Thread.Sleep` or `Task.Delay` to wait for
   time — real time makes tests slow and flaky.
 - **TEST-009** MUST pass `TestContext.Current.CancellationToken` to each async call.
 - **TEST-010** MUST assert a `Result` with `IsSuccess` or `IsFailure`, and a `Maybe` with `HasValue` or `HasNoValue`,
-  before it reads `Value` or `Error`. FUNC-008 does not
-  apply in tests — the assertion fails before the access. Arrange helpers can read `.Value` of values built from
-  valid literals.
-- **TEST-011** MUST make test classes `sealed`, and put private helpers after the tests.
-- **TEST-012** MUST keep line coverage at 80% or more, instead of Khorikov's use of coverage only as an indicator:
+  before it reads `Value` or `Error` — the assertion fails before the access. Arrange helpers can read `.Value` of
+  values built from valid literals.
+- **TEST-011** MUST keep line coverage at 80% or more, instead of Khorikov's use of coverage only as an indicator:
   UnitTests over each layer except Infrastructure, IntegrationTests over Infrastructure. In a new solution, make
   `dotnet test` fail below it in `Directory.Build.targets` — a gate that the build runs is not skipped.
