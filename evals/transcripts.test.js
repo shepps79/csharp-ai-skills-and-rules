@@ -18,7 +18,8 @@ test('grade marks a run ungraded when promptfoo has no grade for it', () => {
 });
 
 test('grade follows promptfoo success for a finished run', () => {
-  assert.equal(grade(finished(false), { success: true, failedChecks: [] }).status, 'passed');
-  assert.deepEqual(grade(finished(false), { success: false, failedChecks: ['build'] }),
-    { status: 'failed', score: undefined, failedChecks: ['build'], gradeError: undefined });
+  assert.equal(grade(finished(false), { success: true, failures: [] }).status, 'passed');
+  const failures = [{ check: 'build', reason: 'Build failed' }];
+  assert.deepEqual(grade(finished(false), { success: false, failures }),
+    { status: 'failed', score: undefined, failures, gradeError: undefined });
 });

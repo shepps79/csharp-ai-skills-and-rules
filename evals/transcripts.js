@@ -50,8 +50,8 @@ function gradesOf(evalId) {
       success: r.success,
       errored: r.failureReason === ERRORED,
       score: r.score,
-      failedChecks: (r.gradingResult?.componentResults ?? []).filter((c) => !c.pass)
-        .map((c) => c.assertion?.metric ?? c.reason),
+      failures: (r.gradingResult?.componentResults ?? []).filter((c) => !c.pass)
+        .map((c) => ({ check: c.assertion?.metric ?? c.assertion?.type ?? 'check', reason: c.reason })),
       error: r.failureReason === ERRORED ? r.error : undefined,
     }]);
   } catch (error) {
@@ -72,7 +72,7 @@ function grade(run, graded) {
   const status = !result || result.is_error || graded?.errored ? 'errored'
     : graded === undefined ? 'ungraded'
       : graded.success ? 'passed' : 'failed';
-  return { status, score: graded?.score, failedChecks: graded?.failedChecks ?? [], gradeError: graded?.error };
+  return { status, score: graded?.score, failures: graded?.failures ?? [], gradeError: graded?.error };
 }
 
 // What the provider staged after the agent finished, i.e. the diff promptfoo graded; empty while a run is in progress.
@@ -143,6 +143,7 @@ pre { margin: .4rem 0; padding: .6rem; background: var(--code); border-radius: 6
 .step.note { background: none; border: none; padding: .1rem .75rem; color: var(--muted); font-size: .9em; }
 .step.user { border-left: 3px solid var(--muted); white-space: pre-wrap; }
 .step.tool-error > summary { color: #b91c1c; }
+.step.failure { background: var(--failed); white-space: pre-wrap; }
 .diff span { display: block; } .diff .add { background: var(--passed); } .diff .del { background: var(--failed); }
 .diff .hunk { color: var(--muted); }
 .browse { font-weight: normal; font-size: .9em; margin-left: .5rem; }
@@ -214,7 +215,7 @@ function evalPage(id) {
           el('td', {}, run.description ?? el('span', { class: 'muted' }, run.name)),
           el('td', {}, run.provider ?? ''),
           el('td', {}, badge(run.status)),
-          el('td', {}, run.failedChecks.join(', ')),
+          el('td', {}, run.failures.map((f) => f.check).join(', ')),
           el('td', {}, String(result.num_turns ?? '')),
           el('td', {}, minutes(result.duration_ms)),
           el('td', {}, dollars(result.total_cost_usd)));
@@ -240,10 +241,12 @@ function runPage(name) {
     el('dl', {},
       field('Provider', run.provider), field('Fixture', run.fixture), field('Started', when(run.startedAt)),
       field('Score', run.score === undefined ? undefined : run.score.toFixed(2)),
-      field('Failed checks', run.failedChecks.join(', ')), field('Error', run.gradeError),
+      field('Failed checks', run.failures.map((f) => f.check).join(', ')), field('Error', run.gradeError),
       field('Turns', String(result.num_turns ?? '')), field('Time', minutes(result.duration_ms)),
       field('Cost', dollars(result.total_cost_usd)), field('Run dir', run.dir)),
     run.task ? [el('div', { class: 'label' }, 'Task'), el('pre', {}, run.task)] : [],
+    run.failures.length ? [el('div', { class: 'label' }, 'Why it failed'),
+      run.failures.map((f) => el('div', { class: 'step failure' }, el('strong', {}, f.check), el('div', {}, f.reason ?? '')))] : [],
     changes(run),
     el('h2', {}, 'Timeline'),
     steps(run.events, null, results),
