@@ -10,8 +10,8 @@ alwaysApply: true
 
 ## Rules
 - **CLEAN-002** MUST keep a function at 20 lines or fewer — a longer function usually does more than one thing.
-- **CLEAN-003** MUST give a function 3 parameters or fewer, not counting a `CancellationToken`. Use a parameter
-  `record` for more — a long parameter list hides which values belong together.
+- **CLEAN-003** MUST give a function 5 parameters or fewer, not counting a `CancellationToken`, unless it is a `Match`
+  (DDD-010). Use a parameter `record` for more — a long parameter list hides which values belong together.
 - **CLEAN-004** MUST NOT nest blocks more than 3 levels deep. Use a guard clause or extract a method — deep nesting
   hides the main path.
 - **CLEAN-005** MUST write an XML documentation comment on each public type and member in production projects (the
