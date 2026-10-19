@@ -52,21 +52,22 @@ alwaysApply: true
   the build runs is not skipped.
 
 ## Examples
-A fake and its contract (the adapter test in IntegrationTests also derives from `OrderRepositoryContract`):
+A contract, the fake that runs it in UnitTests and the real adapter that runs it in IntegrationTests. Each call to
+`CreateRepository` in one test must reach the same store:
 
 ```csharp
+// src/Orders.UnitTests/Fakes/OrderRepositoryContract.cs
 public abstract class OrderRepositoryContract
 {
     [Fact]
     public async Task FindPendingAsync_ReturnsSavedOrder_WhenOrderIsPending()
     {
         // Arrange
-        var repository = CreateRepository();
         var order = NewPendingOrder();
-        await repository.SaveAsync(order, TestContext.Current.CancellationToken);
+        await CreateRepository().SaveAsync(order, TestContext.Current.CancellationToken);
 
         // Act
-        var result = await repository.FindPendingAsync(order.Id, TestContext.Current.CancellationToken);
+        var result = await CreateRepository().FindPendingAsync(order.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -74,14 +75,25 @@ public abstract class OrderRepositoryContract
         result.Value.Value.Id.Should().Be(order.Id);
     }
 
+    /// <summary>Returns a repository over the one store that all calls in a test share.</summary>
     protected abstract IOrderRepository CreateRepository();
 
     private static PendingOrder NewPendingOrder() =>
         PendingOrder.Create(OrderId.Create(Guid.NewGuid()).Value, [OrderLine.Create("SKU-001", 2).Value]).Value;
 }
 
+// src/Orders.UnitTests/Fakes/InMemoryOrderRepositoryTests.cs
 public sealed class InMemoryOrderRepositoryTests : OrderRepositoryContract
 {
-    protected override IOrderRepository CreateRepository() => new InMemoryOrderRepository();
+    private readonly InMemoryOrderRepository _repository = new();
+
+    protected override IOrderRepository CreateRepository() => _repository;
+}
+
+// src/Orders.IntegrationTests/Infrastructure/PostgresOrderRepositoryTests.cs
+[Collection(nameof(PostgresDatabase))]
+public sealed class PostgresOrderRepositoryTests(PostgresDatabase database) : OrderRepositoryContract
+{
+    protected override IOrderRepository CreateRepository() => new PostgresOrderRepository(database.CreateContext());
 }
 ```
