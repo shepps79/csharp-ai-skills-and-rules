@@ -40,7 +40,7 @@ alwaysApply: true
   second type that only copies the DTO adds nothing.
 - **HEX-015** MUST handle each exception that gets to the host in one handler that returns a 500 ProblemDetails
   (`AddProblemDetails` with `UseExceptionHandler`) — exceptions are bugs, not results.
-- **HEX-016** MUST bind adapters to ports only in the composition root: extension methods on
+- **HEX-016** MUST bind adapters to ports only in the composition root: extension members on
   `IHostApplicationBuilder` that `Program.cs` calls. MUST NOT resolve services elsewhere — one place shows all bindings.
 
 ## Examples
