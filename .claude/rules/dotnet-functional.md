@@ -32,9 +32,11 @@ alwaysApply: true
   back the unchecked access that the types remove.
 - **FUNC-009** MUST combine independent `Validation` results with `Result.Combine` — the caller then gets all
   validation messages at once. Combine only `Validation` errors.
-- **FUNC-010** MUST NOT use `null` or `T?` for absence in Application or Domain. Use `T?` only at the edge, where JSON
-  or a framework API gives `null`, and change it into `Maybe<T>` immediately (`Maybe.From`) — the compiler does not
-  make a caller handle `null`.
+- **FUNC-010** MUST NOT use `null` or `T?` for absence in Application or Domain — the compiler does not make a caller
+  handle `null`. Use `T?` only at the edge, where a framework API gives `null`, and change it into `Maybe<T>`
+  immediately (`Maybe.From`). Give an optional DTO field the type `Maybe<T>`, and register one System.Text.Json
+  converter for `Maybe<T>` in the composition root (HEX-016): JSON `null` or no property ↔ `Maybe.None`, a value ↔
+  `Maybe.From`.
 - **FUNC-011** MUST NOT use the null-forgiving operator `!` — it hides a possible `null`.
 - **FUNC-012** MUST keep Domain functions pure: the result depends only on the arguments, with no I/O, no field writes
   and no static state — pure code is testable without doubles. Application does I/O only through ports and an injected

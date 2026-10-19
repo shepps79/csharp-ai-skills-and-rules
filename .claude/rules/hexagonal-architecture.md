@@ -37,7 +37,7 @@ alwaysApply: true
 - **HEX-013** MUST map `Error` to ProblemDetails in one place: `Validation` 400, `NotFound` 404, `Conflict` 409,
   `Unavailable` 503 — all endpoints then give the same status for the same failure.
 - **HEX-014** SHOULD return the Application DTO as the response body, unless e.g. the wire shape must differ — a
-  second type that only copies the DTO adds nothing.
+  second type that only copies the DTO adds nothing. A `Maybe<T>` field does not make the wire shape differ (FUNC-010).
 - **HEX-015** MUST handle each exception that gets to the host in one handler that returns a 500 ProblemDetails
   (`AddProblemDetails` with `UseExceptionHandler`) — exceptions are bugs, not results.
 - **HEX-016** MUST bind adapters to ports only in the composition root: extension members on
