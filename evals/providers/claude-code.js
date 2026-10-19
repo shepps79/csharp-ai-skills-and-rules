@@ -32,6 +32,15 @@ class ClaudeCodeProvider {
 
   async callApi(prompt, context) {
     const runDir = createRunDir(context.vars.fixture, this.config);
+    // The transcript holds neither the task nor the eval, so transcripts.js reads them from here.
+    fs.writeFileSync(path.join(runDir, '..', 'run.json'), JSON.stringify({
+      evalId: context.evaluationId,
+      testIdx: context.testIdx,
+      description: context.test?.description,
+      task: prompt,
+      provider: this.label ?? this.id(),
+      fixture: context.vars.fixture,
+    }, null, 2));
     const events = await runAgent(prompt, runDir, this.config);
     const result = events.find((e) => e.type === 'result') ?? {};
     if (result.is_error) {
