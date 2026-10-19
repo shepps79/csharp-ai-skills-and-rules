@@ -8,8 +8,6 @@ alwaysApply: true
 - **CS14-001** MUST use the C# 14 and .NET 10 idioms below in the code that you write or change (DESIGN-007).
 
 ## Rules
-- **CS14-002** MUST use the `field` keyword in a property accessor that only validates, instead of a manual backing
-  field, unless more than one member uses the field.
 - **CS14-003** MUST write new extension members in `extension(...)` blocks instead of static methods with `this` —
   a block groups the members of one receiver and allows extension properties.
 - **CS14-004** MUST use collection expressions (`[a, b]`, `[.. source]`).
