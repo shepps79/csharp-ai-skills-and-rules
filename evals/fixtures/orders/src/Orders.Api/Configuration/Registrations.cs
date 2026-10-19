@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Orders.Api.Json;
 using Orders.Application;
 using Orders.Infrastructure;
 
@@ -14,6 +15,7 @@ public static class Registrations
         {
             builder.Services.AddProblemDetails();
             builder.Services.AddOpenApi();
+            builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new MaybeJsonConverterFactory()));
             builder.Services.AddDbContext<OrdersDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
             builder.Services.AddScoped<IOrderRepository, PostgresOrderRepository>();
