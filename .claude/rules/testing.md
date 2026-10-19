@@ -44,5 +44,5 @@ alwaysApply: true
   before it reads `Value` or `Error` — the assertion fails before the access. Arrange helpers can read `.Value` of
   values built from valid literals.
 - **TEST-011** MUST keep line coverage at 80% or more, instead of Khorikov's use of coverage only as an indicator:
-  UnitTests over each layer except Infrastructure, IntegrationTests over Infrastructure. In a new solution, make
-  `dotnet test` fail below it in `Directory.Build.targets` — a gate that the build runs is not skipped.
+  UnitTests over each layer except Infrastructure, IntegrationTests over Infrastructure — the gate of NET-003 makes
+  `dotnet test` fail below it.

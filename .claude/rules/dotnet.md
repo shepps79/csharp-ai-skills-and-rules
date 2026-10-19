@@ -12,8 +12,8 @@ alwaysApply: true
   `Directory.Build.targets` or `Directory.Packages.props`, and MUST NOT suppress a diagnostic (`#pragma warning disable`, `<NoWarn>`,
   `[SuppressMessage]`, `severity = none`, `<Nullable>disable`). Change the code — the build is the quality gate.
 - **NET-003** MUST, in a new solution, create a `Directory.Build.props` that sets `TargetFramework`, `Nullable` enable,
-  `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` and `GenerateDocumentationFile` — without them the build does
-  not enforce the rules.
+  `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` and `GenerateDocumentationFile`, and a `Directory.Build.targets`
+  that makes `dotnet test` fail below the coverage of TEST-011 — without them the build does not enforce the rules.
 - **NET-004** MUST use central package management: versions only in `Directory.Packages.props`, `PackageReference`
   without `Version` in projects, added with `dotnet add package` — one place holds all versions.
 - **NET-005** MUST use file-scoped namespaces.
