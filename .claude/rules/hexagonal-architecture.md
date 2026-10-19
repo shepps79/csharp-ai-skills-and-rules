@@ -9,9 +9,9 @@ alwaysApply: true
   service: Domain, Application, Infrastructure and an Api project for Presentation.
 
 ## Rules
-- **HEX-002** MUST point project references only in this direction: Api → Application, Infrastructure → Application,
-  Application → Domain, Domain → nothing. MUST NOT add a reference against it — a reference that goes back means
-  the design is wrong.
+- **HEX-002** MUST point project references only in these directions: Api → Application, Api → Infrastructure (only
+  for the composition root, HEX-016), Infrastructure → Application, Application → Domain, Domain → nothing. MUST NOT
+  add a reference against them — a reference that goes back means the design is wrong.
 - **HEX-003** MUST NOT reference a package from Domain, except CSharpFunctionalExtensions — the domain stays pure.
 - **HEX-004** MUST put each outbound port, repositories included, in Application, with the name of the capability
   (`IOrderRepository`, not `IEfOrderRepository`) — ports then have one home.
@@ -19,8 +19,8 @@ alwaysApply: true
   MUST NOT add an `I...UseCase` interface — it has one implementation, and tests use the real service.
 - **HEX-006** MUST return Application DTOs from use cases, never a domain type or a row type — domain internals then
   stay off the wire.
-- **HEX-007** MUST use only Application types and Domain's `Error` and `ErrorKind` in the Api project — Presentation
-  does not know the domain model.
+- **HEX-007** MUST use only Application types and Domain's `Error` and `ErrorKind` in the Api project, outside the
+  composition root (HEX-016) — Presentation does not know the domain model.
 - **HEX-008** MUST do all mapping in the adapter: wire ↔ DTO in Api, row ↔ domain in Infrastructure. Infrastructure
   owns its row types; domain types have no EF attributes and no parameterless constructors — storage then cannot
   change the domain.
