@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 
 namespace Orders.Domain;
@@ -5,7 +6,7 @@ namespace Orders.Domain;
 /// <summary>A failure value; <see cref="Combine"/> merges validation messages.</summary>
 /// <param name="Kind">The kind of failure.</param>
 /// <param name="Messages">What went wrong, one message for each broken rule.</param>
-public sealed record Error(ErrorKind Kind, IReadOnlyList<string> Messages) : ICombine
+public sealed record Error(ErrorKind Kind, ImmutableArray<string> Messages) : ICombine
 {
     /// <summary>Creates a validation error.</summary>
     public static Error Validation(string message) => new(ErrorKind.Validation, [message]);
