@@ -37,7 +37,8 @@ alwaysApply: true
 - **TEST-013** MUST pass `TestContext.Current.CancellationToken` to each async call.
 - **TEST-014** MUST assert a `Result` with `IsSuccess` or `IsFailure`, and a `Maybe` with `HasValue` or `HasNoValue`,
   before it reads `Value` or `Error`. FUNC-008 does not
-  apply in tests — the assertion fails before the access.
+  apply in tests — the assertion fails before the access. Arrange helpers can read `.Value` of values built from
+  valid literals.
 - **TEST-015** MUST NOT put `if`, `switch` or loops in a test — logic in a test needs its own test.
 - **TEST-016** MUST NOT assert on logging, on `ToString()` output or on calls to your own classes. Use `Verify` only on
   an outbound port that has no state to read — assert outcomes, not steps.
