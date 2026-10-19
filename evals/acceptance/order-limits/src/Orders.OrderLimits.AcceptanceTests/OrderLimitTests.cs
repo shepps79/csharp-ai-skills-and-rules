@@ -30,6 +30,6 @@ public sealed class OrderLimitTests(OrdersApi factory) : IClassFixture<OrdersApi
     private Task<HttpResponseMessage> PlaceOrderWithLinesAsync(int count)
     {
         var lines = Enumerable.Range(1, count).Select(i => new PlaceOrderLine($"SKU-{i}", 1, 1m)).ToList();
-        return _client.PostAsJsonAsync("/orders", new PlaceOrderRequest("cust-1", lines), TestContext.Current.CancellationToken);
+        return _client.PostAsJsonAsync("/orders", new PlaceOrderRequest("cust-1", [.. lines]), TestContext.Current.CancellationToken);
     }
 }
