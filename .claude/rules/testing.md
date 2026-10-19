@@ -23,9 +23,11 @@ alwaysApply: true
   database for a managed dependency. Use a mock for a port that has no fake, or to force a failure path, instead of
   Khorikov's mocks only for unmanaged dependencies. Add a fake when two or more test classes need the port — the unit
   tests then run without Docker.
-- **TEST-005** MUST put fakes in `Fakes/` with the name `InMemory<Port name without I>`. A fake does only what the
-  port's types force: store, find by id, and select the state type that a method returns through `Match` (DDD-010).
-  MUST NOT give a fake storage rules (unique keys, ordering, query filters) — IntegrationTests check storage.
+- **TEST-005** MUST put each fake, of any port (HTTP client ports too), in `Fakes/` with the name
+  `InMemory<Port name without I>`. A fake does only what each method's signature names: store, find by the key that
+  it takes (`FindByCustomerAsync` finds by customer), and select the state type that a method returns through `Match`
+  (DDD-010). MUST NOT give a fake the storage rules that only real storage shows (unique keys, ordering, global query
+  filters) — IntegrationTests check storage.
 - **TEST-006** MUST test an HTTP client adapter in `Infrastructure/` against a stub HTTP server: success, 404 to
   `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to `Unavailable`. MUST NOT mock `HttpClient`,
   `HttpMessageHandler` or `IHttpClientFactory` — a mock does not test the serialization or the resilience pipeline.
