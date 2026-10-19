@@ -30,7 +30,8 @@ alwaysApply: true
 - **NET-013** MUST use `nameof` instead of a string literal or `typeof(...).Name`, and a `using` directive instead of
   a fully qualified name.
 - **NET-014** MUST use `ArgumentNullException.ThrowIfNull` for a null guard.
-- **NET-015** SHOULD use a primary constructor, unless e.g. the constructor must validate an argument.
+- **NET-015** SHOULD use a primary constructor, unless e.g. the type follows DDD-004 (a primary constructor cannot be
+  private).
 - **NET-016** MUST use a built-in .NET feature instead of a package or custom code when one exists — built-ins are
   maintained with the runtime.
 - **NET-017** MUST log through `ILogger<T>` with message templates (`"Processing {Count} orders"`), never with string
