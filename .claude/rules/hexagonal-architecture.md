@@ -21,9 +21,9 @@ alwaysApply: true
   stay off the wire.
 - **HEX-007** MUST use only Application types and Domain's `Error` and `ErrorKind` in the Api project, outside the
   composition root (HEX-016) — Presentation does not know the domain model.
-- **HEX-008** MUST do all mapping in the adapter: wire ↔ DTO in Api, row ↔ domain in Infrastructure. Infrastructure
-  owns its row types; domain types have no EF attributes and no parameterless constructors — storage then cannot
-  change the domain.
+- **HEX-008** MUST map wire ↔ DTO in Api, DTO ↔ domain in Application (DDD-006) and row ↔ domain in Infrastructure.
+  Infrastructure owns its row types; domain types have no EF attributes and no parameterless constructors — storage
+  then cannot change the domain.
 - **HEX-009** MUST NOT add a port for a dependency that does no I/O — a port is useful only when tests or a second
   adapter replace it.
 - **HEX-010** MUST get the time from an injected `System.TimeProvider` in Application and adapters, and pass the instant
