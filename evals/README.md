@@ -87,6 +87,10 @@ A result's output is the git diff of everything the agent changed. A cell is PAS
 - To browse the full solution, open the run dir: `ls -td ${TMPDIR:-/tmp}/csharp-skills-evals/*/repo | head` (newest first), then
   `code <dir>` or `git -C <dir> diff --cached HEAD`. `transcript.jsonl` beside it shows how the agent got there.
   Run dirs live in the temp folder, so they disappear when the machine restarts.
+- To follow what the agent did, `npm run transcripts` writes `${TMPDIR:-/tmp}/csharp-skills-evals/index.html`: evals,
+  then each eval's runs (failed first), then a run's diff (per file) and timeline of messages, thinking and tool calls (subagents nested). "Browse final
+  code" opens `<run>/code.html`, a source tree of the repo on disk, hidden acceptance tests included.
+  Rerun it after each eval. Titles and grades come from the `run.json` the provider writes, so older runs are untitled.
 
 ## Quality %
 

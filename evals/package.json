@@ -8,7 +8,8 @@
     "eval-pairwise": "npm run promptfoo -- eval --no-cache --no-share -c pairwise.js",
     "view": "npm run promptfoo -- view --yes",
     "report": "node report.js",
-    "test": "node --test graders/*.test.js",
+    "transcripts": "node transcripts.js",
+    "test": "node --test graders/*.test.js transcripts.test.js",
     "clean": "if pgrep -f \"promptfoo[ ]eval\" >/dev/null; then echo \"An eval is still running; let it finish first.\" >&2; exit 1; fi; rm -rf .promptfoo \"${TMPDIR:-/tmp}/csharp-skills-evals\" && echo \"Removed all eval results and run directories.\""
   },
   "devDependencies": {
