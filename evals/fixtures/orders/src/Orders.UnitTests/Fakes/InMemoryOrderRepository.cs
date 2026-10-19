@@ -11,8 +11,9 @@ public sealed class InMemoryOrderRepository : IOrderRepository
 
     public IReadOnlyCollection<Order> Orders => [.. _orders.Values];
 
-    public Task<UnitResult<Error>> AddAsync(Order order, CancellationToken cancellationToken) =>
-        Task.FromResult(ImmutableInterlocked.TryAdd(ref _orders, order.Id, order)
-            ? UnitResult.Success<Error>()
-            : UnitResult.Failure(Error.Conflict($"Order {order.Id.Value} already exists.")));
+    public Task<UnitResult<Error>> AddAsync(Order order, CancellationToken cancellationToken)
+    {
+        ImmutableInterlocked.AddOrUpdate(ref _orders, order.Id, order, (_, _) => order);
+        return Task.FromResult(UnitResult.Success<Error>());
+    }
 }

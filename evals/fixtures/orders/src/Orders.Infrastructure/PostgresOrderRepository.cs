@@ -1,7 +1,5 @@
 using System.Data.Common;
 using CSharpFunctionalExtensions;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using Orders.Application;
 using Orders.Domain;
 
@@ -18,10 +16,6 @@ public sealed class PostgresOrderRepository(OrdersDbContext database) : IOrderRe
         {
             await database.SaveChangesAsync(cancellationToken);
             return UnitResult.Success<Error>();
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            return Error.Conflict($"Order {order.Id.Value} already exists.");
         }
         // EF Core wraps a connection failure in this "transient failure" exception.
         catch (InvalidOperationException exception) when (exception.InnerException is DbException)

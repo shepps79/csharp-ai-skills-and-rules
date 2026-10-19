@@ -40,14 +40,6 @@ public sealed class OrderEndpointsTests(WebApplicationFactory<Program> factory) 
     }
 
     [Fact]
-    public async Task PlaceOrder_Returns409_WhenStoreReportsConflict()
-    {
-        var response = await ClientWith(FailingRepository(Error.Conflict("exists"))).PostAsJsonAsync("/orders", ValidRequest, TestContext.Current.CancellationToken);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-    }
-
-    [Fact]
     public async Task PlaceOrder_Returns503_WhenStoreIsUnavailable()
     {
         var response = await ClientWith(FailingRepository(Error.Unavailable("down"))).PostAsJsonAsync("/orders", ValidRequest, TestContext.Current.CancellationToken);

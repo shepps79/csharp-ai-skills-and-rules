@@ -8,7 +8,7 @@ public sealed class OrderService(IOrderRepository repository)
 {
     /// <summary>
     /// Creates, confirms and stores an order. Returns <see cref="ErrorKind.Validation"/> with all broken rules of the
-    /// request, or the <see cref="ErrorKind.Conflict"/> and <see cref="ErrorKind.Unavailable"/> errors of the store.
+    /// request, or <see cref="ErrorKind.Unavailable"/> when the store cannot be reached.
     /// </summary>
     public Task<Result<OrderSummary, Error>> PlaceOrderAsync(PlaceOrderRequest request, CancellationToken cancellationToken) =>
         NewOrder(request)
