@@ -1,12 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using AwesomeAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Orders.Application;
 
 namespace Orders.OrderLimits.AcceptanceTests;
 
-public sealed class OrderLimitTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class OrderLimitTests(OrdersApi factory) : IClassFixture<OrdersApi>
 {
     private const int DefaultLimit = 50;
 

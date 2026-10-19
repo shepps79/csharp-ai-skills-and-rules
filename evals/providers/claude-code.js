@@ -141,49 +141,24 @@ function stageAndListChanges(runDir) {
   return git(runDir, 'diff', '--cached', '--name-only', '--diff-filter=d', 'HEAD').split('\n').filter(Boolean);
 }
 
-// Builds and tests the agent's work, reruns its tests against the planted mutants in mutants/<vars.mutants>.json,
-// then runs the hidden acceptance tests in acceptance/<fixture> and acceptance/<vars.acceptance>.
-function buildAndTest(runDir, { fixture, acceptance, mutants }) {
+// Builds and tests the agent's work, then runs the hidden acceptance tests in acceptance/<fixture> and
+// acceptance/<vars.acceptance>.
+function buildAndTest(runDir, { fixture, acceptance }) {
   const build = dotnet(runDir, ['build', '-warnaserror']);
   if (!build.ok) {
     return { buildOk: false, testsOk: false, passed: 0, failed: 0, coverage: null, acceptance: null, log: build.log.slice(-4000) };
   }
-  const test = dotnet(runDir, ['test', '--no-build', '--collect', 'XPlat Code Coverage', '--results-directory', 'TestResults']);
+  // coverlet.msbuild: the fixture's Directory.Build.targets turns it on and fails the run below its threshold; the
+  // global properties make a greenfield solution without that file report coverage too.
+  const test = dotnet(runDir, ['test', '--no-build', '-p:CollectCoverage=true', '-p:CoverletOutputFormat=cobertura']);
   return {
     buildOk: true,
     testsOk: test.ok,
     ...testCounts(test.log),
     coverage: lineCoverage(runDir),
-    mutants: plantedMutants(runDir, mutants),
     acceptance: acceptanceTests(runDir, [fixture, acceptance]),
     log: test.log.slice(-4000),
   };
-}
-
-// Known bugs patched into fixture code one at a time: a test suite that stays green under one never checked that
-// behaviour, which is what a tautological test (expected value from production code, stubbed value echoed) does.
-function plantedMutants(runDir, name) {
-  if (!name) {
-    return null;
-  }
-  const mutants = JSON.parse(fs.readFileSync(path.join(EVALS, 'mutants', `${name}.json`), 'utf8'));
-  return mutants.map(({ name: mutant, file, find, replace }) => {
-    const target = path.join(runDir, file);
-    const original = fs.readFileSync(target, 'utf8');
-    if (original.split(find).length !== 2) {
-      return { name: mutant, killed: false, error: `${file} no longer contains the mutated code once` };
-    }
-    fs.writeFileSync(target, original.replace(find, replace));
-    try {
-      const build = dotnet(runDir, ['build']);
-      if (!build.ok) {
-        return { name: mutant, killed: false, error: 'mutant does not compile', log: build.log.slice(-2000) };
-      }
-      return { name: mutant, killed: !dotnet(runDir, ['test', '--no-build']).ok };
-    } finally {
-      fs.writeFileSync(target, original);
-    }
-  });
 }
 
 // Copied in only after the agent's diff and coverage are taken, so the agent never sees them and they don't count.
@@ -206,18 +181,17 @@ function testCounts(log) {
 }
 
 // Covered and coverable lines per production file, merged across test projects: a line counts as covered when
-// any project's tests hit it. null when no coverlet.collector report was written.
+// any project's tests hit it. null when no coverlet report was written.
 function lineCoverage(runDir) {
-  const resultsDir = path.join(runDir, 'TestResults');
-  const reports = fs.existsSync(resultsDir)
-    ? fs.readdirSync(resultsDir, { recursive: true }).filter((file) => file.endsWith('coverage.cobertura.xml'))
-    : [];
+  const reports = fs.readdirSync(runDir, { recursive: true })
+    .filter((file) => file.endsWith('coverage.cobertura.xml') && !file.split(path.sep).includes('node_modules'))
+    .map((file) => path.join(runDir, file));
   if (reports.length === 0) {
     return null;
   }
   const hitByLine = new Map();
   for (const report of reports) {
-    const xml = fs.readFileSync(path.join(resultsDir, report), 'utf8');
+    const xml = fs.readFileSync(report, 'utf8');
     const source = xml.match(/<source>([^<]*)<\/source>/)?.[1] ?? runDir;
     for (const [, filename, body] of xml.matchAll(/<class [^>]*filename="([^"]+)"[^>]*>([\s\S]*?)<\/class>/g)) {
       const file = path.relative(runDir, path.resolve(source, filename));

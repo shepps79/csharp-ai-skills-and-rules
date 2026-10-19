@@ -25,21 +25,26 @@ public sealed class LayerTests
         FailingTypes(Types.InAssembly(Load("Infrastructure")).ShouldNot().HaveDependencyOn("Orders.Api"))
             .Should().BeEmpty();
 
+    // Domain's Error and ErrorKind are the one part of Domain that Api may use, to map failures to responses.
     [Fact]
     public void Endpoints_UseApplicationOnly_OutsideTheCompositionRoot() =>
         FailingTypes(Types.InAssembly(Load("Api"))
             .That().DoNotResideInNamespace("Orders.Api.Configuration").And().DoNotHaveName("Program")
-            .ShouldNot().HaveDependencyOnAny("Orders.Infrastructure", "Orders.Domain"))
+            .ShouldNot().HaveDependencyOnAny(["Orders.Infrastructure", .. DomainTypesOtherThanErrors()]))
             .Should().BeEmpty();
 
     [Fact]
     public void ProductionClasses_AreSealed_UnlessAbstract() =>
         FailingTypes(Types.InAssemblies([Load("Domain"), Load("Application"), Load("Infrastructure"), Load("Api")])
             .That().AreClasses().And().AreNotAbstract().And().DoNotHaveNameStartingWith("<")
+            .And().DoNotResideInNamespace("Orders.Infrastructure.Migrations")
             .Should().BeSealed())
             .Should().BeEmpty();
 
     private static Assembly Load(string layer) => Assembly.Load($"Orders.{layer}");
+
+    private static string[] DomainTypesOtherThanErrors() =>
+        [.. Load("Domain").GetExportedTypes().Where(type => type.Name is not ("Error" or "ErrorKind")).Select(type => type.FullName ?? type.Name)];
 
     private static IEnumerable<string> FailingTypes(ConditionList conditions) => conditions.GetResult().FailingTypeNames ?? [];
 }

@@ -8,6 +8,8 @@
     <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <!-- VersionOverride: the agent owns Directory.Packages.props, so this project can't rely on an entry there. -->
+    <PackageReference Include="Testcontainers.PostgreSql" VersionOverride="4.16.0" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>

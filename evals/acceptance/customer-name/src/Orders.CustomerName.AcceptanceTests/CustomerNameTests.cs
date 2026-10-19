@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AwesomeAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Orders.Application;
@@ -11,7 +10,7 @@ namespace Orders.CustomerName.AcceptanceTests;
 
 // Stubs the primary handler of every IHttpClientFactory client, so code that news up its own HttpClient
 // reaches for the network and fails.
-public sealed class CustomerNameTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CustomerNameTests(OrdersApi factory) : IClassFixture<OrdersApi>
 {
     private const string CustomerServiceUrl = "http://customers.test/";
 

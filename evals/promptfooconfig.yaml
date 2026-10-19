@@ -46,7 +46,7 @@ tests:
     vars:
       task: |
         Callers of `OrderService` need to look up a single order by its id. An order with that id might not exist.
-        Add this capability end to end (application port, in-memory adapter, service method) with unit tests.
+        Add this capability end to end (application port, PostgreSQL adapter, service method) with tests.
     assert:
       # Hidden tests (acceptance/orders, plus acceptance/<vars.acceptance>) exist for orders tasks only.
       - &acceptance { type: javascript, value: file://graders/checks.js:acceptance, metric: acceptance, weight: 3 }
@@ -54,7 +54,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
-      # The task adds a lookup, so the in-memory adapter is observable and can replace a mock.
+      # The task adds a lookup, so the in-memory fake is observable and can replace a mock.
       - &preferInMemoryRepository
         type: javascript
         value: file://graders/checks.js:preferRealCollaborators
@@ -67,59 +67,10 @@ tests:
           The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
           Pass only if all of these hold:
           - Absence is modelled explicitly with Maybe<Order> (CSharpFunctionalExtensions), not a nullable return.
-          - The lookup is added to the IOrderRepository port, implemented in the in-memory adapter, and exposed by OrderService.
+          - The lookup is added to the IOrderRepository port, implemented in the PostgreSQL adapter and the in-memory fake,
+            and exposed by OrderService.
           - Tests cover both the found and not-found cases through public APIs only.
           - Names reveal intent, there is no speculative code, and async methods take and pass a CancellationToken.
-          Score 0-1 by the share of points satisfied.
-
-  - description: place-order-tests (conflict — mocks vs Testcontainers)
-    vars:
-      task: |
-        `OrderService.PlaceOrderAsync` has no unit tests. Add them.
-    assert:
-      - *acceptance
-      - { type: javascript, value: file://graders/checks.js:noTestcontainers, metric: no-testcontainers }
-      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
-      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff adding unit tests for OrderService.PlaceOrderAsync in a C# xUnit v3 project.
-          Pass only if all of these hold:
-          - Only the IOrderRepository port is faked (Moq or the in-memory adapter); no real infrastructure or containers.
-          - Tests cover success and each failure path (missing customer, no items) and verify the order is persisted only on success.
-          - Test names follow Method_ExpectedBehavior_Scenario; assertions use AwesomeAssertions; no logic in tests.
-          - Tests check observable outcomes, not implementation details.
-          Score 0-1 by the share of points satisfied.
-
-  - description: summary-tests (trap — tautological tests that take expected values from production code or the mock)
-    vars:
-      # Bugs planted in fixture code after the agent finishes; its tests must fail under each (mutants/summary-tests.json).
-      mutants: summary-tests
-      task: |
-        `OrderService.PlaceOrderAsync` returns an `OrderSummary`, but nothing tests what is in it.
-        Add unit tests for the summary it returns, mocking the repository with Moq.
-    assert:
-      - *acceptance
-      - { type: javascript, value: file://graders/checks.js:killsPlantedMutants, metric: kills-planted-mutants, weight: 3 }
-      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
-      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff adding unit tests for the OrderSummary returned by OrderService.PlaceOrderAsync,
-          in a C# xUnit v3 project, with Moq for the IOrderRepository port.
-          Pass only if all of these hold:
-          - Expected values are fixed values or arithmetic on fixed numbers (e.g. 30.00m or 2 * 12.50m + 5m, "cust-1",
-            "Confirmed"), never computed from the arranged objects (e.g. request.Lines.Sum(...)) or by production code
-            (OrderSummary.From, Order.Total, LineTotal), and no assertion only restates a stubbed return value.
-          - The test data can expose a wrong total: at least one line with a quantity above 1, and more than one line.
-          - The summary's id is tied to the stored order (e.g. captured from the AddAsync call), and no change is made to
-            production code.
-          - Test names follow Method_ExpectedBehavior_Scenario; assertions use AwesomeAssertions; no logic in tests;
-            TestContext.Current.CancellationToken is passed.
           Score 0-1 by the share of points satisfied.
 
   - description: cancel-order (realistic feature)
@@ -321,9 +272,10 @@ tests:
           The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
           Pass only if all of these hold:
           - Absence is a Maybe from the repository port through OrderService, and the endpoint maps None to 404.
-          - Endpoint tests use WebApplicationFactory<Program> and run the real composition root and in-memory adapter:
-            no registrations replaced and no mocks.
-          - Unit tests use the real InMemoryOrderRepository and real Order objects rather than Moq; a mock appears only
+          - Endpoint tests use WebApplicationFactory<Program> and the real composition root: in UnitTests with only the
+            repository port replaced by the InMemoryOrderRepository fake, in IntegrationTests with nothing replaced and
+            the PostgreSQL adapter against a local container.
+          - Unit tests use the InMemoryOrderRepository fake and real Order objects rather than Moq; a mock appears only
             where nothing real can stand in.
           - Tests cover found and not-found, contain no logic, are named Method_ExpectedBehavior_Scenario, use
             AwesomeAssertions and pass TestContext.Current.CancellationToken.

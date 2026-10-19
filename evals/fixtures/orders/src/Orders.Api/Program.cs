@@ -5,8 +5,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddOrders();
 
 var app = builder.Build();
+app.UseExceptionHandler();
+app.MapOpenApi();
 app.MapOrderEndpoints();
 app.Run();
 
-/// <summary>Entry point, public so integration tests can host the API.</summary>
+/// <summary>Entry point, public so tests can host the API.</summary>
 public sealed partial class Program;

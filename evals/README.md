@@ -65,11 +65,15 @@ The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`, both a
 
 Fixtures: `orders` (existing service) and `empty` (greenfield). `orders` models the hexagonal layout the rules ask
 for, because agents copy what they find: Domain, Application (use-case service as inbound port, DTOs at its boundary,
-`IOrderRepository` outbound port), Infrastructure (in-memory adapter), Api (minimal-API inbound adapter plus the
-composition root in `Configuration/Registrations.cs`), and UnitTests and IntegrationTests (`WebApplicationFactory`). Both symlink `.editorconfig` from `templates/dotnet/`,
-and `orders` also its `Directory.Build.props`, so the compiler-enforced rules have one source. That props file adds
-StyleCop (member ordering only) and the VS Threading analyzers (no `.Result`/`.Wait()`, no `async void`) as
-`GlobalPackageReference`s. The `orders` test projects reference coverlet.collector and coverlet.msbuild.
+`IOrderRepository` outbound port), Infrastructure (PostgreSQL adapter with EF Core and its migrations), Api
+(minimal-API inbound adapter plus the composition root in `Configuration/Registrations.cs`), UnitTests (domain,
+use-case and `WebApplicationFactory` tests over the `InMemoryOrderRepository` fake, and the repository contract) and
+IntegrationTests (the PostgreSQL adapter and the endpoints against a Testcontainers database). It follows every rule,
+so agents copy good code. Both fixtures symlink `.editorconfig` and `AGENTS.md` from `templates/dotnet/`, and `orders`
+also its `Directory.Build.props` and `Directory.Build.targets`, so the compiler-enforced rules have one source. The
+props file adds StyleCop (member ordering only) and the VS Threading analyzers (no `.Result`/`.Wait()`, no
+`async void`) as `GlobalPackageReference`s. The targets file makes `dotnet test` fail below 80% line coverage
+(coverlet.msbuild): UnitTests over every layer but Infrastructure, IntegrationTests over Infrastructure. Runs need Docker.
 
 Each run copies `fixtures/<fixture>` (symlinks resolved) to a fresh git repo under `$TMPDIR/csharp-skills-evals/`, outside this repo so its
 rules aren't picked up from a parent directory. The agent runs in `auto` permission mode. Run directories and
@@ -104,8 +108,8 @@ npm run report -- <baseline-id> <eval-id>   # several evals; exits 1 if their fi
 ```
 
 Prints a quality % per variant, overall and per task, and the mean turns, tokens, cost and minutes per run: the same
-quality at lower cost is a win too. Each run's quality is the weighted mean of its checks (build, tests, acceptance,
-planted mutants and judge weigh 3; each rule check 1; the judge's, coverage's and mutants' scores are fractional), and is
+quality at lower cost is a win too. Each run's quality is the weighted mean of its checks (build, tests, acceptance
+and judge weigh 3; each rule check 1; the judge's and coverage's scores are fractional), and is
 0 when the build fails.
 "all checks pass" is the stricter share of runs where nothing failed. Runs that errored (agent never ran, timed out)
 are counted under "run errors" and left out of both percentages. The `fingerprint` line lists the environment hashes;
@@ -115,22 +119,20 @@ the report exits 1 when the evals it prints have more than one.
 
 - `graders/checks.js`: deterministic checks on build, tests and the files the agent changed. `testsAdded` counts the
   `[Fact]`/`[Theory]` attributes the diff adds, so the fixture's own tests don't count. `noWarningSuppression` fails a
-  run that edits or deletes the fixture's `.editorconfig`/`Directory.Build.props` or suppresses warnings, since that
+  run that edits or deletes the fixture's `.editorconfig`/`Directory.Build.props`/`Directory.Build.targets` or
+  suppresses warnings (generated `Migrations/` excepted), since that
   would let the build check pass. `projectsInSolution` fails a project the build and test run would never see.
   `coverage` is the line coverage (merged across test projects) of the production files the agent changed, or of all
-  of them for a tests-only change; it needs coverlet.collector, and the provider runs `dotnet test --collect "XPlat Code
-  Coverage"`. On greenfield, `coverletPackages` also requires every new test project to reference coverlet.collector
+  of them for a tests-only change; it needs coverlet.msbuild, and the provider runs `dotnet test
+  -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura`, so the tests check also fails below the fixture's
+  coverage gate. On greenfield, `coverletPackages` also requires every new test project to reference coverlet.collector
   and coverlet.msbuild, versioned in `Directory.Packages.props`. `skillsUsed`/`noSkillsUsed` grade the repo skills the agent loaded.
   `npm test` runs the graders' own tests; run it after changing a check.
 - `acceptance/`: hidden tests the agent never sees. After the agent's diff, build and coverage are taken, the provider
   copies `acceptance/<fixture>/` and `acceptance/<vars.acceptance>/` over the run dir and runs `dotnet test` on each
   project in them. `acceptance/orders` holds NetArchTest architecture tests (layer dependencies, sealed classes);
-  `acceptance/order-limits` tests that task's HTTP contract.
-- `mutants/`: known bugs planted in fixture code. With `vars.mutants: <name>`, after the agent's tests run the provider
-  applies each `find`/`replace` in `mutants/<name>.json` in turn, rebuilds and reruns the agent's tests;
-  `killsPlantedMutants` scores the share that turn them red. Tautological tests (expected values from production code,
-  stubbed values echoed back) stay green under every mutant. Each mutant must survive the fixture's own tests, or it
-  measures nothing.
+  the task suites (`order-limits`, `customer-name`, `get-order-endpoint`) test the HTTP contract through the real host
+  (`OrdersApi`) against a PostgreSQL container migrated with the agent's migrations.
 - `llm-rubric`: a local `claude -p` judge (`providers/judge.js`) with no tools, plugins, hooks or CLAUDE.md.
   The rubric text in `promptfooconfig.yaml` is the yardstick, so don't edit it in the same change as the rules.
 
@@ -141,6 +143,4 @@ Single runs are noisy. Use `--repeat 5` or more, and treat differences smaller t
 1. Add a test to `promptfooconfig.yaml` with the task text in `vars.task`, the checks that apply, and a rubric.
 2. If the task text fixes a contract (an HTTP route, a public method), add hidden tests for it under
    `acceptance/<name>/src/<Project>/` and set `vars.acceptance: <name>`.
-3. To grade whether the agent's tests check behaviour (not just exercise it), add bugs to the fixture code they cover
-   in `mutants/<name>.json` and set `vars.mutants: <name>`. A mutant must compile and survive the fixture's own tests.
-4. Add a fixture under `fixtures/` only if `orders` (existing service) or `empty` (greenfield) can't host the task.
+3. Add a fixture under `fixtures/` only if `orders` (existing service) or `empty` (greenfield) can't host the task.

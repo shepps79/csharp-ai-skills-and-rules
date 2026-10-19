@@ -52,6 +52,7 @@ test('noWarningSuppression fails weakened build guards and suppressions', () => 
   assert.equal(passes('noWarningSuppression', { 'src/A/B.cs': '#pragma warning disable CS1591\n' }), false);
   assert.equal(passes('noWarningSuppression', { 'src/A/A.csproj': '<NoWarn>$(NoWarn);CS1591</NoWarn>' }), false);
   assert.equal(passes('noWarningSuppression', { 'src/A/B.cs': 'namespace A;\n' }), true);
+  assert.equal(passes('noWarningSuppression', { 'src/A/Migrations/1_Init.cs': '#nullable disable\n' }), true);
 });
 
 test('noNullForAbsence catches sync and async nullable returns', () => {
@@ -210,19 +211,12 @@ test('preferRealCollaborators fails a mock of a port that has a usable real adap
 
 test('endpointTestsThroughHost requires the real host and composition root', () => {
   const config = { route: '/orders/' };
-  const tests = (code) => ({ 'src/X.IntegrationTests/Api/OrderEndpointsTests.cs': code });
+  const tests = (code, project = 'IntegrationTests') => ({ [`src/X.${project}/Api/OrderEndpointsTests.cs`]: code });
   const host = 'IClassFixture<WebApplicationFactory<Program>>\n_client.GetAsync($"/orders/{id}")';
   assert.equal(passes('endpointTestsThroughHost', tests(host), {}, config), true);
   assert.equal(passes('endpointTestsThroughHost', tests(`${host}\nbuilder.ConfigureTestServices(s => s.RemoveAll<IOrderRepository>())`), {}, config), false);
+  assert.equal(passes('endpointTestsThroughHost', tests(`${host}\nbuilder.ConfigureTestServices(s => s.AddSingleton(fake))`, 'UnitTests'), {}, config), true);
   assert.equal(passes('endpointTestsThroughHost', tests('var sut = new OrderService(repository);'), {}, config), false);
-});
-
-test('killsPlantedMutants scores the share of mutants the tests kill', () => {
-  const grade = (mutants) => checks.killsPlantedMutants('', { metadata: { dotnet: { buildOk: true, mutants } } });
-  assert.equal(grade([{ name: 'a', killed: true }, { name: 'b', killed: true }]).pass, true);
-  assert.equal(grade([{ name: 'a', killed: true }, { name: 'b', killed: false }]).score, 0.5);
-  assert.equal(grade([{ name: 'a', killed: false, error: 'mutant does not compile' }]).pass, false);
-  assert.equal(grade(null).pass, false);
 });
 
 test('independentExpectations fails expected values taken from production code or a stub', () => {

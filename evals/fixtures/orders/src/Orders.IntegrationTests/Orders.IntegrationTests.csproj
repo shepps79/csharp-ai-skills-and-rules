@@ -15,11 +15,14 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Orders.Api/Orders.Api.csproj" />
+    <!-- For the repository contract that the fake and the real adapter share. -->
+    <ProjectReference Include="../Orders.UnitTests/Orders.UnitTests.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

@@ -8,7 +8,7 @@ const isTestFile = (file) => /Tests?\//.test(file) || /Tests?\.cs$/.test(file);
 const isCSharp = (file) => file.endsWith('.cs');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
 // Files the fixture ships to make the build the gate for the compiler-enforced rules.
-const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props'];
+const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props', 'Directory.Build.targets'];
 const REPO_SKILLS = fs.readdirSync(path.resolve(__dirname, '../../.claude/skills'));
 // The compiler (CS8524) and dotnet.md demand a throwing discard arm on exhaustive enum switches.
 const DISCARD_ARM_THROW = /(\b_\s*=>|default\s*:)\s*throw\b/g;
@@ -35,19 +35,6 @@ module.exports = {
     return result(acceptance.ok, `${acceptance.passed} passed, ${acceptance.failed} failed`, acceptance.log);
   },
 
-  // The agent's tests rerun against known bugs planted in fixture code (provider, mutants/<vars.mutants>.json); each
-  // bug they stay green under is behaviour they never checked. Scored by the share killed.
-  killsPlantedMutants: (_, { metadata }) => {
-    const { mutants, buildOk } = metadata.dotnet;
-    if (!mutants) {
-      return result(false, buildOk ? 'no planted mutants for this task' : 'build failed');
-    }
-    const survivors = mutants.filter((mutant) => !mutant.killed);
-    const reason = survivors.length
-      ? `tests stay green with: ${survivors.map(({ name, error }) => (error ? `${name} (${error})` : name)).join('; ')}`
-      : `all ${mutants.length} mutants killed`;
-    return { pass: survivors.length === 0, score: (mutants.length - survivors.length) / mutants.length, reason };
-  },
 
   // Line coverage of the production files the agent changed, or of all production code for a tests-only change.
   // Scored by the coverage itself, so 70% and 10% aren't both just "fail".
@@ -88,8 +75,9 @@ module.exports = {
   noWarningSuppression: (_, context) => {
     const changedGuards = git(context.metadata.runDir, 'diff', '--cached', '--name-only', '--diff-filter=MD', 'HEAD', '--',
       ...BUILD_GUARDS).split('\n').filter(Boolean);
-    const hits = matchingFiles(context, (file) => /\.(cs|csproj|props|targets|editorconfig|globalconfig)$/.test(file),
-      SUPPRESSION);
+    // dotnet ef writes `#nullable disable` into every migration it generates.
+    const hits = matchingFiles(context,
+      (file) => /\.(cs|csproj|props|targets|editorconfig|globalconfig)$/.test(file) && !file.includes('/Migrations/'), SUPPRESSION);
     const problems = [...changedGuards.map((file) => `${file} changed or deleted`), ...hits.map((file) => `suppression in ${file}`)];
     return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
@@ -206,13 +194,13 @@ module.exports = {
     return result(mocked.length === 0, mocked.length ? mocked.join('; ') : 'ok');
   },
 
-  // Endpoint tests go through the real host and composition root: WebApplicationFactory<Program> hitting the route,
-  // with no registrations swapped out (the orders fixture needs none).
+  // Endpoint tests go through the real host and composition root: WebApplicationFactory<Program> hitting the route.
+  // UnitTests swap ports for fakes; IntegrationTests swap nothing and run against the local containers.
   endpointTestsThroughHost: (_, context) => {
     const tests = testSources(context);
     const route = new RegExp(context.config.route);
     const throughHost = tests.some(({ code }) => /WebApplicationFactory<\s*Program\s*>/.test(code) && route.test(code));
-    const swapped = tests.filter(({ code }) => /ConfigureTestServices|RemoveAll<|\.Replace\(/.test(code));
+    const swapped = tests.filter(({ file, code }) => file.includes('.IntegrationTests/') && /ConfigureTestServices|RemoveAll<|\.Replace\(/.test(code));
     const problems = [
       ...(throughHost ? [] : [`no WebApplicationFactory<Program> test calling ${context.config.route}`]),
       ...swapped.map(({ file }) => `${file} replaces the app's registrations`),
@@ -312,8 +300,6 @@ module.exports = {
       /CancellationToken\.None|default\(CancellationToken\)|new\s+CancellationToken\(|[(,]\s*default\s*\)/,
       'tests should pass TestContext.Current.CancellationToken'),
 
-  noTestcontainers: (_, context) =>
-    noMatches(context, () => true, /Testcontainers/i, 'Testcontainers used where the port is in-memory'),
 };
 
 function noExceptionFlow(context, layer, pattern, problem) {

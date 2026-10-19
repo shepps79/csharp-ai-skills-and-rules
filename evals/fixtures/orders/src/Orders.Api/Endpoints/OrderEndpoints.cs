@@ -1,6 +1,6 @@
 using CSharpFunctionalExtensions;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Orders.Application;
-using IResult = Microsoft.AspNetCore.Http.IResult;
 
 namespace Orders.Api.Endpoints;
 
@@ -10,15 +10,17 @@ public static class OrderEndpoints
     extension(IEndpointRouteBuilder endpoints)
     {
         /// <summary>Maps the order routes.</summary>
-        public IEndpointRouteBuilder MapOrderEndpoints()
+        public RouteGroupBuilder MapOrderEndpoints()
         {
-            endpoints.MapPost("/orders", PlaceOrderAsync);
-            return endpoints;
+            var orders = endpoints.MapGroup("/orders");
+            orders.MapPost(string.Empty, PlaceOrderAsync);
+            return orders;
         }
     }
 
-    private static async Task<IResult> PlaceOrderAsync(PlaceOrderRequest request, OrderService orders, CancellationToken cancellationToken) =>
+    private static async Task<Results<Created<OrderSummary>, ProblemHttpResult>> PlaceOrderAsync(
+        PlaceOrderRequest request, OrderService orders, CancellationToken cancellationToken) =>
         (await orders.PlaceOrderAsync(request, cancellationToken)).Match(
-            onSuccess: order => Results.Created($"/orders/{order.Id}", order),
-            onFailure: error => Results.BadRequest(error));
+            onSuccess: Results<Created<OrderSummary>, ProblemHttpResult> (order) => TypedResults.Created($"/orders/{order.Id}", order),
+            onFailure: error => error.ToProblem());
 }

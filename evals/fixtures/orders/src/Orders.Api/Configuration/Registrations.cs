@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Orders.Application;
 using Orders.Infrastructure;
 
@@ -8,11 +9,14 @@ public static class Registrations
 {
     extension(IHostApplicationBuilder builder)
     {
-        /// <summary>Registers the order use cases and their adapters.</summary>
+        /// <summary>Registers the order use cases, their adapters and the HTTP pipeline services.</summary>
         public IHostApplicationBuilder AddOrders()
         {
-            // Singleton: the in-memory store must outlive a request.
-            builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
+            builder.Services.AddProblemDetails();
+            builder.Services.AddOpenApi();
+            builder.Services.AddDbContext<OrdersDbContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("Orders")));
+            builder.Services.AddScoped<IOrderRepository, PostgresOrderRepository>();
             builder.Services.AddTransient<OrderService>();
             return builder;
         }

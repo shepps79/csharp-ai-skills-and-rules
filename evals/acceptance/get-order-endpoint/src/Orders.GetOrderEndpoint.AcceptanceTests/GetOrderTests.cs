@@ -2,12 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AwesomeAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Orders.Application;
 
 namespace Orders.GetOrderEndpoint.AcceptanceTests;
 
-public sealed class GetOrderTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GetOrderTests(OrdersApi factory) : IClassFixture<OrdersApi>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
