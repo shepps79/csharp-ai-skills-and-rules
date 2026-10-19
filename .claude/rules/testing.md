@@ -32,11 +32,11 @@ alwaysApply: true
   `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to `Unavailable`. MUST NOT mock `HttpClient`,
   `HttpMessageHandler` or `IHttpClientFactory` — a mock does not test the serialization or the resilience pipeline.
 - **TEST-007** MUST test endpoints through `WebApplicationFactory<Program>` with the real host and the real use cases.
-  In UnitTests, replace only ports with fakes, in `ConfigureTestServices`, and assert the status code, the typed body
-  and one status for each `ErrorKind` that the endpoint returns. In IntegrationTests, replace nothing, point the
-  adapters at local containers and stub servers (never a cloud service), and test one happy path for each endpoint plus each case that
-  only real infrastructure shows. Test a repository only through these endpoint tests — cases that the fakes already
-  cover give no new signal.
+  In UnitTests, replace only ports with fakes, as singletons in `ConfigureTestServices` (a fake keeps its state across
+  requests), and assert the status code, the typed body and one status for each `ErrorKind` that the endpoint
+  returns. In IntegrationTests, replace nothing, point the adapters at local containers and stub servers (never a
+  cloud service), and test one happy path for each endpoint plus each case that only real infrastructure shows. Test a
+  repository only through these endpoint tests — cases that the fakes already cover give no new signal.
 - **TEST-008** MUST control time with a fake `TimeProvider`. MUST NOT use `Thread.Sleep` or `Task.Delay` to wait for
   time — real time makes tests slow and flaky.
 - **TEST-009** MUST pass `TestContext.Current.CancellationToken` to each async call.
