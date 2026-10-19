@@ -13,8 +13,10 @@ alwaysApply: true
 - **CS14-003** MUST write new extension members in `extension(...)` blocks instead of static methods with `this` —
   a block groups the members of one receiver and allows extension properties.
 - **CS14-004** MUST use collection expressions (`[a, b]`, `[.. source]`).
-- **CS14-005** MUST use a positional `record` for data without an invariant (DTOs, row types), and a
-  `readonly record struct` for such data with 2 or 3 fields. A type with an invariant follows DDD-004.
+- **CS14-005** MUST use a positional `record` for data without an invariant (DTOs, row types); a type with an
+  invariant follows DDD-004. Use a `readonly record struct` for such data with 2 or 3 fields that holds no collection
+  and is not a row type — the `default` of a struct holds a default collection (a default `ImmutableArray` throws on
+  use), and an EF Core entity type must be a class.
 - **CS14-006** MUST use `required` properties instead of a constructor that only forces initialization, in a type that
   is not a record (for example, an options class).
 - **CS14-007** MUST use switch expressions and patterns instead of `if`/`else` chains.
