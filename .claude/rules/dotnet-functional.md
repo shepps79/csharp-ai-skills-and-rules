@@ -18,8 +18,11 @@ alwaysApply: true
   show in the signature.
 - **FUNC-005** MUST use the `Error` record and the `ErrorKind` enum below, one time per service, in Domain. MUST NOT
   use string errors (`Result<T>`) — a caller maps the kind to a response without parsing text.
-- **FUNC-006** MUST return `Result<Maybe<T>, Error>` from a port lookup that can find nothing. The use case changes absence into `Error.NotFound(...)` when absence is a failure for its caller.
-  Use cases MUST return `Result<T, Error>` or `UnitResult<Error>`, never `Maybe<T>`.
+- **FUNC-006** MUST return `Result<Maybe<T>, Error>` from a port lookup that can find nothing. The use case changes
+  absence into `Error.NotFound(...)` when absence is a failure for its caller. Use cases MUST return `Result<T, Error>`
+  or `UnitResult<Error>`, never `Maybe<T>`. A port or a use case MUST return a sequence as
+  `Task<Result<ImmutableArray<T>, Error>>` (FUNC-014) — an `IAsyncEnumerable<T>` cannot carry a failure (FUNC-003),
+  and an adapter cannot catch an exception around a `yield` (FUNC-007).
 - **FUNC-007** MUST, in an adapter, catch only the named exceptions of the technology that it wraps (`DbException`,
   `DbUpdateException`, `HttpRequestException`, `TimeoutRejectedException`, `BrokenCircuitException`) and return an
   `Error` (a unique-key violation is `Conflict`, an outage is `Unavailable`). MUST NOT catch `Exception`. MUST let

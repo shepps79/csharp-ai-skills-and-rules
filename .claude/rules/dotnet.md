@@ -41,8 +41,8 @@ alwaysApply: true
   last parameter.
 - **NET-020** MUST return the inner task directly when a method only awaits one call, unless the call is in a `using`
   or `try` block — the extra state machine does nothing.
-- **NET-021** MUST return `IAsyncEnumerable<T>` for an async sequence instead of `Task<List<T>>` — the caller can
-  stream it.
+- **NET-021** MUST return `IAsyncEnumerable<T>` for an async sequence outside the railway (for example, a streaming
+  endpoint) instead of `Task<List<T>>` — the caller can stream it. A port or a use case follows FUNC-006.
 - **NET-022** MUST bind configuration with `AddOptions<T>().BindConfiguration(...)`, and add
   `.ValidateDataAnnotations().ValidateOnStart()` when the options class has data annotations — bad configuration then
   fails at startup.
