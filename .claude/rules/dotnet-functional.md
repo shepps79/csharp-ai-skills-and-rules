@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # Functional style
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **FUNC-001** MUST apply Scott Wlaschin's railway-oriented programming with CSharpFunctionalExtensions
   (`Result<T, E>`, `UnitResult<E>`, `Maybe<T>`, `Bind`, `Map`, `Ensure`, `Tap`, `Match`).

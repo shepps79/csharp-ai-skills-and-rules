@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # C# 14 / .NET 10 idioms
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **CS14-001** MUST use the C# 14 and .NET 10 idioms below in the code that you write or change (DESIGN-007).
 

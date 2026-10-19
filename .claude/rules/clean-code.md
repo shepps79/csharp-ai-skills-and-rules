@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # Clean code
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **CLEAN-001** MUST apply Robert C. Martin's *Clean Code* chapters on meaningful names, functions and formatting.
   Do not apply its chapters on comments, error handling, classes and unit tests, or its Law of Demeter.

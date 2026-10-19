@@ -4,17 +4,11 @@ alwaysApply: true
 ---
 # Testing
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
-## Styles
-- **TEST-001** MUST use xUnit v3, AwesomeAssertions, Moq, Testcontainers, WireMock.Net, `FakeTimeProvider`,
-  `WebApplicationFactory` and coverlet. MUST NOT use xUnit `Assert.*` — one assertion style for all tests.
-
 ## Rules
 - **TEST-002** MUST put all tests of a service in one project, `src/<Service>.Tests/`, with the folders `Domain/`,
   `Application/`, `Infrastructure/`, `Presentation/` and `Fakes/`. MUST NOT make a `tests/` directory — fakes and
   contract tests then share one project.
-- **TEST-003** MUST mark each test that starts a container or a WireMock server with
+- **TEST-003** MUST mark each test that starts a container or a stub HTTP server with
   `[Trait("Category", "Integration")]` — `dotnet test --filter` can then run the fast tests alone.
 - **TEST-004** MUST name a test `Method_ExpectedBehavior_Scenario`. Omit the scenario when there is no condition.
 - **TEST-005** MUST get expected values independently of the code under test (literals or values calculated by hand),
@@ -25,19 +19,19 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
   for a test — a member that a test cannot reach is a design signal.
 - **TEST-007** MUST use the real class for each dependency that is not an outbound port (domain types, services,
   mappers) — a mock of your own class tests the mock.
-- **TEST-008** MUST replace an outbound port with its in-memory fake when one exists. Use Moq only for a port that has
+- **TEST-008** MUST replace an outbound port with its in-memory fake when one exists. Use a mock only for a port that has
   no fake, or to force a failure path. Add a fake when two or more test classes need the port — a fake lets the
   test read the result back through the port.
 - **TEST-009** MUST put fakes in `Fakes/` with the name `InMemory<Port name without I>`, and give each faked port an
   abstract contract test class that runs against the fake and the real adapter — the contract keeps the fake honest.
-- **TEST-010** MUST test Infrastructure adapters against real infrastructure: databases with Testcontainers, HTTP APIs
-  with WireMock.Net (success, 404 to `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to
+- **TEST-010** MUST test Infrastructure adapters against real infrastructure: databases in a container, HTTP APIs
+  against a stub HTTP server (success, 404 to `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to
   `Unavailable`). MUST NOT mock `HttpClient`, `HttpMessageHandler` or `IHttpClientFactory` — a mock does not test
   the serialization or the resilience pipeline.
 - **TEST-011** MUST test endpoints through `WebApplicationFactory<Program>` with the real host and the real use cases.
   Replace only ports with fakes, in `ConfigureTestServices`. Assert the status code and the typed body, and one
   status for each `ErrorKind` that the endpoint returns.
-- **TEST-012** MUST control time with `FakeTimeProvider`. MUST NOT use `Thread.Sleep` or `Task.Delay` to wait for
+- **TEST-012** MUST control time with a fake `TimeProvider`. MUST NOT use `Thread.Sleep` or `Task.Delay` to wait for
   time — real time makes tests slow and flaky.
 - **TEST-013** MUST pass `TestContext.Current.CancellationToken` to each async call.
 - **TEST-014** MUST assert a `Result` with `IsSuccess` or `IsFailure`, and a `Maybe` with `HasValue` or `HasNoValue`,
@@ -52,8 +46,7 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
   `_sut` last. Put private helpers after the tests.
 - **TEST-019** SHOULD mark `// Arrange`, `// Act` and `// Assert` in a test, unless e.g. the test is three lines or
   fewer.
-- **TEST-020** MUST reference `coverlet.collector` and `coverlet.msbuild`, and keep line coverage at 80% or more
-  (`dotnet test /p:CollectCoverage=true /p:Threshold=80 /p:ThresholdType=line`).
+- **TEST-020** MUST keep line coverage at 80% or more — untested code paths hide bugs.
 
 ## Examples
 A fake and its contract (the Testcontainers adapter test also derives from `OrderRepositoryContract`):

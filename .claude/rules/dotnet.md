@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # C# / .NET conventions
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **NET-001** MUST apply Microsoft's C# coding conventions and the .NET Runtime coding style.
 
@@ -13,7 +11,7 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 - **NET-002** MUST NOT change the analyzer or build settings in `.editorconfig`, `Directory.Build.props` or
   `Directory.Packages.props`, and MUST NOT suppress a diagnostic (`#pragma warning disable`, `<NoWarn>`,
   `[SuppressMessage]`, `severity = none`, `<Nullable>disable`). Change the code — the build is the quality gate.
-- **NET-003** MUST, in a new solution, create a `Directory.Build.props` that sets `net10.0`, `Nullable` enable,
+- **NET-003** MUST, in a new solution, create a `Directory.Build.props` that sets `TargetFramework`, `Nullable` enable,
   `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` and `GenerateDocumentationFile` — without them the build does
   not enforce the rules.
 - **NET-004** MUST use central package management: versions only in `Directory.Packages.props`, `PackageReference`

@@ -1,6 +1,8 @@
 # Project Context
 A set of C# dotnet core rules and context files, using evals to test and confirm.
 
+MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
+
 ## Tech Stack
 - dotnet SDK 10
 

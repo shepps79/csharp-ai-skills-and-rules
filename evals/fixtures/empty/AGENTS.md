@@ -1,0 +1,1 @@
+../../../templates/dotnet/AGENTS.md

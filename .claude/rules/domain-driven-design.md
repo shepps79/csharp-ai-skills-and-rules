@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # Domain-driven design
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **DDD-001** MUST apply Eric Evans' ubiquitous language, one bounded context per service, aggregates, entities, value
   objects and domain services. Do not apply context mapping, specifications, domain events, core-domain triage or

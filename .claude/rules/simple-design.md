@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # Simple design
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **DESIGN-001** MUST apply Kent Beck's four rules of simple design in Beck and Fowler's order: passes the tests,
   reveals intention, has no duplication, has the fewest elements.

@@ -4,8 +4,6 @@ alwaysApply: true
 ---
 # Hexagonal architecture
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **HEX-001** MUST apply Alistair Cockburn's hexagonal architecture (ports and adapters) with four projects for each
   service: Domain, Application, Infrastructure and an Api project for Presentation.
@@ -35,7 +33,7 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
   `AddStandardResilienceHandler()`. MUST NOT create an `HttpClient` with `new` — the factory manages sockets, and the
   handler adds retries and timeouts.
 - **HEX-012** MUST write inbound HTTP adapters as ASP.NET Core minimal APIs: one `MapGroup` for each aggregate,
-  `TypedResults` and the built-in OpenAPI (`Microsoft.AspNetCore.OpenApi`, not Swashbuckle).
+  and `TypedResults`.
 - **HEX-013** MUST map `Error` to ProblemDetails in one place: `Validation` 400, `NotFound` 404, `Conflict` 409,
   `Unavailable` 503 — all endpoints then give the same status for the same failure.
 - **HEX-014** SHOULD return the Application DTO as the response body, unless e.g. the wire shape must differ — a

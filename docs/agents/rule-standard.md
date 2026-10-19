@@ -25,8 +25,6 @@ alwaysApply: true
 ---
 # <Topic>
 
-MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
-
 ## Styles
 - **FUNC-001** MUST apply <named style>'s <named parts>.
 
@@ -44,7 +42,9 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 - `paths:` loads a rule only once the agent touches a matching file, so it never loads on greenfield work. Topics
   that shape a design before any file exists (`DESIGN`, `DDD`, `HEX`) stay on `alwaysApply: true`; `paths:` is only
   for topics that matter solely while editing matching files.
-- The RFC keyword line is repeated in every file: Claude Code does not read `AGENTS.md`, and each file must stand alone.
+- The RFC keyword line is in the project's `AGENTS.md`, not in each rule file: Claude Code loads `AGENTS.md` and
+  every rule without `paths:` at session start. A project with a `CLAUDE.md` must import `@AGENTS.md` (Claude Code
+  then skips `AGENTS.md`).
 - The style line has its own ID, so it can be ablated like any other rule.
 
 ## Rules for rules
@@ -77,8 +77,10 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 10. **Build-enforced rules get one line.** The build is the one `templates/dotnet` sets up (`.editorconfig`,
     `Directory.Build.props`). Anything it fails the build on gets exactly one line: projects without the template
     still need the rule, and a failed build costs the agent turns.
-11. **No human scaffolding.** No context, audience, principles, references, TL;DR, waiver process or quality gates.
-12. **Size.** Each body under 12,000 characters (the pi-rules and codex-rules per-rule cap); all bodies together under
+11. **No stack choices.** Frameworks, libraries, versions and tool commands belong in the project's `AGENTS.md`
+    (`templates/dotnet/AGENTS.md` for the eval fixtures). A rule may use the API of a chosen library.
+12. **No human scaffolding.** No context, audience, principles, references, TL;DR, waiver process or quality gates.
+13. **Size.** Each body under 12,000 characters (the pi-rules and codex-rules per-rule cap); all bodies together under
     40,000 characters, since every session loads them all.
-13. **Language.** Write rule text in ASD-STE100 Simplified Technical English: short sentences, active voice, one
+14. **Language.** Write rule text in ASD-STE100 Simplified Technical English: short sentences, active voice, one
     meaning per word, the imperative for instructions. Code identifiers and named styles keep their own names.
