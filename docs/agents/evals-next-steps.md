@@ -64,7 +64,7 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the rule that now owns it:
 
 - Unit tests with TestContainers vs Moq, and mock-first vs real collaborators: TEST-001 (Khorikov's classical school)
-  and TEST-008 and TEST-009 (in-memory fakes without storage rules, Moq only for a port without a fake or for a failure
+  and TEST-004 and TEST-005 (in-memory fakes without storage rules, Moq only for a port without a fake or for a failure
   path). Measured by
   `place-order-tests`, `preferRealCollaborators` and `endpointTestsThroughHost`.
 - `(Order?)null` in test examples: FUNC-006 and FUNC-010 (`Result<Maybe<T>, Error>` from lookups, no `null` inside)
@@ -73,7 +73,7 @@ The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the
   infrastructure exceptions) (`reserve-stock`, `noExceptionsInApplication`).
 - `Async` suffix vs test names: NET-009 exempts test methods.
 - `IClock` vs `TimeProvider`: HEX-010 (`night-review`, `noSystemClock`, `usesTimeProvider`).
-- Outbound HTTP: HEX-011 (typed client, standard resilience handler); adapter tests: TEST-010 (WireMock.Net, no
+- Outbound HTTP: HEX-011 (typed client, standard resilience handler); adapter tests: TEST-006 (WireMock.Net, no
   mocked `HttpClient`) (`customer-name`, `reserve-stock`, `typedHttpClient`, `httpResilience`).
 - Production code as the oracle: TEST-001 (Khorikov's anti-pattern of leaking domain knowledge to tests) (`independentExpectations`,
   `killsPlantedMutants`).
@@ -86,7 +86,7 @@ Still open:
   Moq or the in-memory adapter. Giving the fixture's adapter a lookup would change every `orders` task, so it waits for
   a deliberate yardstick change.
 - The rewrite adds stances no check grades yet: `ErrorKind` mapped to ProblemDetails (HEX-013), state-per-type with
-  `Match` (DDD-008 to DDD-010), constrained types (DDD-003, DDD-004), fakes without storage rules (TEST-009). Review the
+  `Match` (DDD-008 to DDD-010), constrained types (DDD-003, DDD-004), fakes without storage rules (TEST-005). Review the
   rubrics against them in a separate commit before the next baseline.
 
 ## Compiler-enforced rules
