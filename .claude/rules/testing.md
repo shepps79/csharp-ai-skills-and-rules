@@ -5,11 +5,10 @@ alwaysApply: true
 # Testing
 
 ## Rules
-- **TEST-002** MUST put all tests of a service in one project, `src/<Service>.Tests/`, with the folders `Domain/`,
-  `Application/`, `Infrastructure/`, `Presentation/` and `Fakes/`. MUST NOT make a `tests/` directory — fakes and
-  contract tests then share one project.
-- **TEST-003** MUST mark each test that starts a container or a stub HTTP server with
-  `[Trait("Category", "Integration")]` — `dotnet test --filter` can then run the fast tests alone.
+- **TEST-002** MUST put the tests of a service in two projects: `src/<Service>.UnitTests/` (folders `Domain/`,
+  `Application/`, `Api/` and `Fakes/`) for each test that runs in memory, and `src/<Service>.IntegrationTests/`
+  (folders `Infrastructure/` and `Api/`) for each test that starts a local container or stub server. MUST NOT make a
+  `tests/` directory — the fast tests then run without Docker.
 - **TEST-004** MUST name a test `Method_ExpectedBehavior_Scenario`. Omit the scenario when there is no condition.
 - **TEST-005** MUST get expected values independently of the code under test (literals or values calculated by hand),
   instead of DESIGN-001's no duplication. MUST NOT call the production formula or mapper to make the expected value —
@@ -23,14 +22,16 @@ alwaysApply: true
   no fake, or to force a failure path. Add a fake when two or more test classes need the port — a fake lets the
   test read the result back through the port.
 - **TEST-009** MUST put fakes in `Fakes/` with the name `InMemory<Port name without I>`, and give each faked port an
-  abstract contract test class that runs against the fake and the real adapter — the contract keeps the fake honest.
-- **TEST-010** MUST test Infrastructure adapters against real infrastructure: databases in a container, HTTP APIs
-  against a stub HTTP server (success, 404 to `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to
+  abstract contract test class in `Fakes/`. It runs against the fake in UnitTests and against the real adapter in
+  IntegrationTests, which references UnitTests — the contract keeps the fake honest.
+- **TEST-010** MUST test Infrastructure adapters against real infrastructure that runs locally, never a cloud service:
+  databases in a container, HTTP APIs against a stub HTTP server (success, 404 to `Maybe.None`, 4xx to `Validation` or `Conflict`, 5xx and timeout to
   `Unavailable`). MUST NOT mock `HttpClient`, `HttpMessageHandler` or `IHttpClientFactory` — a mock does not test
   the serialization or the resilience pipeline.
 - **TEST-011** MUST test endpoints through `WebApplicationFactory<Program>` with the real host and the real use cases.
-  Replace only ports with fakes, in `ConfigureTestServices`. Assert the status code and the typed body, and one
-  status for each `ErrorKind` that the endpoint returns.
+  In UnitTests, replace only ports with fakes, in `ConfigureTestServices`, and assert the status code, the typed body
+  and one status for each `ErrorKind` that the endpoint returns. In IntegrationTests, replace nothing and point the
+  adapters at the local containers — only the full path shows that the wiring and the storage work together.
 - **TEST-012** MUST control time with a fake `TimeProvider`. MUST NOT use `Thread.Sleep` or `Task.Delay` to wait for
   time — real time makes tests slow and flaky.
 - **TEST-013** MUST pass `TestContext.Current.CancellationToken` to each async call.
@@ -46,10 +47,12 @@ alwaysApply: true
   `_sut` last. Put private helpers after the tests.
 - **TEST-019** SHOULD mark `// Arrange`, `// Act` and `// Assert` in a test, unless e.g. the test is three lines or
   fewer.
-- **TEST-020** MUST keep line coverage at 80% or more — untested code paths hide bugs.
+- **TEST-020** MUST keep line coverage at 80% or more: UnitTests over each layer except Infrastructure, IntegrationTests
+  over Infrastructure. In a new solution, make `dotnet test` fail below it in `Directory.Build.targets` — a gate that
+  the build runs is not skipped.
 
 ## Examples
-A fake and its contract (the Testcontainers adapter test also derives from `OrderRepositoryContract`):
+A fake and its contract (the adapter test in IntegrationTests also derives from `OrderRepositoryContract`):
 
 ```csharp
 public abstract class OrderRepositoryContract

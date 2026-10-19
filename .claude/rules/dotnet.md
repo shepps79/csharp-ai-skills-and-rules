@@ -8,8 +8,8 @@ alwaysApply: true
 - **NET-001** MUST apply Microsoft's C# coding conventions and the .NET Runtime coding style.
 
 ## Rules
-- **NET-002** MUST NOT change the analyzer or build settings in `.editorconfig`, `Directory.Build.props` or
-  `Directory.Packages.props`, and MUST NOT suppress a diagnostic (`#pragma warning disable`, `<NoWarn>`,
+- **NET-002** MUST NOT change the analyzer or build settings in `.editorconfig`, `Directory.Build.props`,
+  `Directory.Build.targets` or `Directory.Packages.props`, and MUST NOT suppress a diagnostic (`#pragma warning disable`, `<NoWarn>`,
   `[SuppressMessage]`, `severity = none`, `<Nullable>disable`). Change the code — the build is the quality gate.
 - **NET-003** MUST, in a new solution, create a `Directory.Build.props` that sets `TargetFramework`, `Nullable` enable,
   `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` and `GenerateDocumentationFile` — without them the build does

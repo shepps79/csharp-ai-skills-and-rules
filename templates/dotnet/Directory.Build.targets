@@ -1,0 +1,17 @@
+<Project>
+  <!-- dotnet test fails below 80% line coverage. Each test project measures the layers it owns:
+       UnitTests all but Infrastructure, IntegrationTests only Infrastructure. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.UnitTests')) Or $(MSBuildProjectName.EndsWith('.IntegrationTests'))">
+    <CollectCoverage>true</CollectCoverage>
+    <Threshold>80</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <CoverletOutput>$(MSBuildProjectDirectory)/TestResults/</CoverletOutput>
+    <ExcludeByFile>**/Migrations/*.cs,**/obj/**/*.cs</ExcludeByFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.UnitTests'))">
+    <Exclude>[*.Infrastructure]*</Exclude>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.IntegrationTests'))">
+    <Include>[*.Infrastructure]*</Include>
+  </PropertyGroup>
+</Project>
