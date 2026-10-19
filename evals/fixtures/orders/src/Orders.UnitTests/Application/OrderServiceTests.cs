@@ -58,17 +58,14 @@ public sealed class OrderServiceTests
     [Fact]
     public async Task PlaceOrderAsync_ReturnsUnavailable_WhenStoreIsUnavailable()
     {
-        // Arrange
         var repository = new Mock<IOrderRepository>();
         repository.Setup(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(UnitResult.Failure(Error.Unavailable("down")));
         var service = new OrderService(repository.Object);
 
-        // Act
         var result = await service.PlaceOrderAsync(
             new PlaceOrderRequest("cust-1", [new PlaceOrderLine("SKU-1", 1, 10m)]), TestContext.Current.CancellationToken);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error.Kind.Should().Be(ErrorKind.Unavailable);
     }

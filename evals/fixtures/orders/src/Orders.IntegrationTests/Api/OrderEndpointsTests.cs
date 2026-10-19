@@ -17,14 +17,11 @@ public sealed class OrderEndpointsTests(PostgresDatabase database)
     [Fact]
     public async Task PlaceOrder_StoresTheConfirmedOrder_WhenRequestIsValid()
     {
-        // Arrange
         await using var factory = CreateFactory(database.ConnectionString);
         var request = new PlaceOrderRequest("cust-1", [new PlaceOrderLine("SKU-1", 2, 10m)]);
 
-        // Act
         var response = await factory.CreateClient().PostAsJsonAsync("/orders", request, TestContext.Current.CancellationToken);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         await using var context = database.CreateContext();
@@ -35,14 +32,11 @@ public sealed class OrderEndpointsTests(PostgresDatabase database)
     [Fact]
     public async Task PlaceOrder_Returns503_WhenDatabaseIsUnreachable()
     {
-        // Arrange
         await using var factory = CreateFactory(UnreachableDatabase);
         var request = new PlaceOrderRequest("cust-1", [new PlaceOrderLine("SKU-1", 1, 10m)]);
 
-        // Act
         var response = await factory.CreateClient().PostAsJsonAsync("/orders", request, TestContext.Current.CancellationToken);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
     }
 

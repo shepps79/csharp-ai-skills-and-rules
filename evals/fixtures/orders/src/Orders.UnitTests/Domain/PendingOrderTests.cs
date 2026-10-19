@@ -26,15 +26,12 @@ public sealed class PendingOrderTests
     [Fact]
     public void Confirm_ReturnsConfirmedOrderWithTheSameIdAndLines()
     {
-        // Arrange
         var id = OrderId.New();
         var line = Line("SKU-1", 2, 10m);
         var pending = PendingOrder.Create(id, Customer(), [line]).Value;
 
-        // Act
         var result = pending.Confirm();
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Id.Should().Be(id);
         result.Value.Lines.Should().Equal(line);
