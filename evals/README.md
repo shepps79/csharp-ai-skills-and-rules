@@ -67,8 +67,8 @@ Fixtures: `orders` (existing service) and `empty` (greenfield). `orders` models 
 for, because agents copy what they find: Domain, Application (use-case service as inbound port, DTOs at its boundary,
 `IOrderRepository` outbound port), Infrastructure (PostgreSQL adapter with EF Core and its migrations), Api
 (minimal-API inbound adapter plus the composition root in `Configuration/Registrations.cs`), UnitTests (domain,
-use-case and `WebApplicationFactory` tests over the `InMemoryOrderRepository` fake, and the repository contract) and
-IntegrationTests (the PostgreSQL adapter and the endpoints against a Testcontainers database). It follows every rule,
+use-case and `WebApplicationFactory` tests over the `InMemoryOrderRepository` fake) and IntegrationTests (the
+endpoints against a Testcontainers database). It follows every rule,
 so agents copy good code. Both fixtures symlink `.editorconfig` and `AGENTS.md` from `templates/dotnet/`, and `orders`
 also its `Directory.Build.props` and `Directory.Build.targets`, so the compiler-enforced rules have one source. The
 props file adds StyleCop (member ordering only) and the VS Threading analyzers (no `.Result`/`.Wait()`, no
