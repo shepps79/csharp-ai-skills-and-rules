@@ -15,9 +15,10 @@ alwaysApply: true
 ## Rules
 - **DDD-003** MUST model a domain value that has a rule (an id, a quantity, an email, money) as a constrained type, not
   as a primitive — after creation, the value is always valid.
-- **DDD-004** MUST make each type that has an invariant a `sealed record` with a private constructor, get-only or
-  `private init` properties and a static `Create` that returns `Result<T, Error>`, instead of a positional record or
-  a `readonly record struct` — their public `init`, `with` and `default` skip the validation.
+- **DDD-004** MUST make each type that has an invariant a `sealed record` with a private constructor, get-only
+  properties and a static `Create` that returns `Result<T, Error>`, instead of a positional record or a
+  `readonly record struct` — their public `init`, `with` and `default` skip the validation. An entity that DDD-012
+  changes with `with` has `private init` properties instead (`private protected init` on a base record).
 - **DDD-005** MUST NOT check again what a constrained type already guarantees — the type is the check.
 - **DDD-006** MUST parse the primitives of a request into constrained types one time, in the use case, before it calls
   the domain — Presentation cannot see Domain, and the domain then gets only valid values.
