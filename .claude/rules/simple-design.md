@@ -21,5 +21,5 @@ alwaysApply: true
   make each class shallow.
 - **DESIGN-007** MUST bring only the code that you change into line with the rules, plus all that the build then
   reports. MUST NOT restyle unchanged code in the same file — small diffs are easier to review; do a cleanup as a separate task.
-- **DESIGN-008** SHOULD delete code instead of extracting an abstraction, unless e.g. the concept that the duplicates
-  share is already clear — a wrong abstraction costs more to remove than duplication.
+- **DESIGN-008** SHOULD keep the duplicated code instead of Beck's no duplication, unless e.g. the concept that the
+  duplicates share is already clear — a wrong abstraction costs more to remove than duplication.
