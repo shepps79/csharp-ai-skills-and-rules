@@ -37,7 +37,8 @@ alwaysApply: true
   static state. Application does I/O only through ports — pure code is testable without doubles.
 - **FUNC-013** MUST NOT change an argument or a captured variable. Return a new value.
 - **FUNC-014** MUST hold collections in immutable types (`ImmutableArray<T>`, `FrozenDictionary<TKey, TValue>`) and
-  expose `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>`, never `List<T>` — a caller must not change the state.
+  expose them as they are or as `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>`, never `List<T>` — a caller
+  must not change the state.
 - **FUNC-015** SHOULD use LINQ instead of `for`, `foreach` or `while`, unless e.g. a `Span<T>` hot path needs a loop —
   a pipeline tells what the code does, not how.
 
