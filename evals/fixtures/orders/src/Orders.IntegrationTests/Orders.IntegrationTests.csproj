@@ -21,8 +21,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Orders.Api/Orders.Api.csproj" />
-    <!-- For the repository contract that the fake and the real adapter share. -->
-    <ProjectReference Include="../Orders.UnitTests/Orders.UnitTests.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
