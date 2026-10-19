@@ -15,7 +15,8 @@ alwaysApply: true
 - **CS14-004** MUST use collection expressions (`[a, b]`, `[.. source]`).
 - **CS14-005** MUST use a positional `record` for data without an invariant (DTOs, row types), and a
   `readonly record struct` for such data with 2 or 3 fields. A type with an invariant follows DDD-004.
-- **CS14-006** MUST use `required` properties instead of a constructor that only forces initialization.
+- **CS14-006** MUST use `required` properties instead of a constructor that only forces initialization, in a type that
+  is not a record (for example, an options class).
 - **CS14-007** MUST use switch expressions and patterns instead of `if`/`else` chains.
 - **CS14-008** MUST use an extended property pattern (`{ Customer.Address.Code: "US" }`) instead of nested property
   patterns.
