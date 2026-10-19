@@ -8,7 +8,7 @@ alwaysApply: true
 - **FUNC-001** MUST apply Scott Wlaschin's railway-oriented programming with CSharpFunctionalExtensions
   (`Result<T, E>`, `UnitResult<E>`, `Maybe<T>`, `Bind`, `Map`, `Ensure`, `Tap`, `Match`).
 - **FUNC-002** MUST apply Gary Bernhardt's functional core, imperative shell: Domain is pure, and side effects occur
-  only in adapters.
+  only in adapters and in log calls.
 
 ## Rules
 - **FUNC-003** MUST return each expected failure as a value (`Result<T, Error>` or `UnitResult<Error>`): validation,
@@ -36,8 +36,9 @@ alwaysApply: true
   or a framework API gives `null`, and change it into `Maybe<T>` immediately (`Maybe.From`) — the compiler does not
   make a caller handle `null`.
 - **FUNC-011** MUST NOT use the null-forgiving operator `!` — it hides a possible `null`.
-- **FUNC-012** MUST keep functions pure: the result depends only on the arguments, with no I/O, no field writes and no
-  static state. Application does I/O only through ports — pure code is testable without doubles.
+- **FUNC-012** MUST keep Domain functions pure: the result depends only on the arguments, with no I/O, no field writes
+  and no static state — pure code is testable without doubles. Application does I/O only through ports and an injected
+  `ILogger<T>` (NET-017), which, like `TimeProvider` (HEX-010), is not a port.
 - **FUNC-013** MUST NOT change an argument or a captured variable. Return a new value.
 - **FUNC-014** MUST hold collections in immutable types (`ImmutableArray<T>`, `FrozenDictionary<TKey, TValue>`) and
   expose them as they are or as `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>`, never `List<T>` — a caller
