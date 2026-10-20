@@ -255,6 +255,16 @@ test('buildSettings requires the build-guard MSBuild settings and a coverage gat
   assert.equal(passes('buildSettings', { 'Directory.Build.props': props, 'Directory.Build.targets': targets.replace('80', '50') }), false);
 });
 
+test('centralPackageVersions fails a version outside Directory.Packages.props', () => {
+  const global = '<GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.315" />';
+  assert.equal(passes('centralPackageVersions', { 'Directory.Packages.props': `<Project>${global}</Project>` }), true);
+  assert.equal(passes('centralPackageVersions', { 'Directory.Build.props': `<Project>${global}</Project>` }), false);
+  assert.equal(passes('centralPackageVersions', {
+    'src/X/X.csproj': '<Project><PackageReference Include="Moq" Version="4.20.72" /></Project>',
+  }), false);
+  assert.equal(passes('centralPackageVersions', { 'src/X/X.csproj': '<Project><PackageReference Include="Moq" /></Project>' }), true);
+});
+
 test('noStringErrors fails string errors, not Result<T, Error> or UnitResult<Error>', () => {
   const service = (code) => ({ 'src/X.Application/S.cs': code });
   assert.equal(passes('noStringErrors', service('public Task<Result<OrderSummary>> PlaceAsync(R r);')), false);

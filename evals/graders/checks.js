@@ -82,9 +82,10 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
 
+  // Every version lives in Directory.Packages.props, GlobalPackageReference items included.
   centralPackageVersions: (_, context) =>
-    noMatches(context, (file) => file.endsWith('.csproj'), /<PackageReference[^>]*Version=/,
-      'package version set in a .csproj instead of Directory.Packages.props'),
+    noMatches(context, (file) => /\.(csproj|props|targets)$/.test(file) && path.basename(file) !== 'Directory.Packages.props',
+      /<(Global)?PackageReference[^>]*\bVersion=/, 'package version set outside Directory.Packages.props'),
 
   // Tests go through public behaviour (endpoints, use cases), so they never need internals.
   noInternalsVisibleTo: (_, context) =>
