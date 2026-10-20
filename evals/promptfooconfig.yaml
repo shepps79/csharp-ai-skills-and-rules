@@ -219,7 +219,7 @@ tests:
           and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
           - A capability-named outbound port in Application (e.g. IStockReservations) returns UnitResult<Error> or
-            Result<T, Error>. The Infrastructure adapter catches only named exceptions (HttpRequestException,
+            Result<T, Error>. The adapter, in Infrastructure/Clients, catches only named exceptions (HttpRequestException,
             TimeoutRejectedException, BrokenCircuitException), never Exception, and lets OperationCanceledException go. It
             returns Unavailable for an unreachable warehouse, a timeout or a 5xx, and Validation or Conflict for a 4xx.
           - OrderService composes the reservation into PlaceOrderAsync with Bind-style steps, with no try/catch, and
@@ -229,7 +229,7 @@ tests:
             AddStandardResilienceHandler, its base address from configuration.
           - Tests: OrderService and endpoint unit tests replace the port with an in-memory fake in Fakes/ named
             InMemory<port name without I>, and show that a failed reservation leaves the order unstored. The adapter is
-            tested in IntegrationTests against a stub HTTP server (e.g. WireMock.Net) for success, a 4xx, a 5xx and a
+            tested in IntegrationTests/Infrastructure/Clients against a stub HTTP server (e.g. WireMock.Net) for success, a 4xx, a 5xx and a
             timeout; HttpClient, HttpMessageHandler and IHttpClientFactory are not mocked.
           Score 0-1 by the share of points satisfied.
 
@@ -255,8 +255,8 @@ tests:
           The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
           and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
-          - A capability-named outbound port in Application (e.g. ICustomerDirectory) is implemented by an Infrastructure
-            adapter that takes HttpClient in its constructor, registered once as a typed client with AddHttpClient in the
+          - A capability-named outbound port in Application (e.g. ICustomerDirectory) is implemented by an adapter in
+            Infrastructure/Clients that takes HttpClient in its constructor, registered once as a typed client with AddHttpClient in the
             composition root, base address from configuration. No `new HttpClient`, no IHttpClientFactory.CreateClient,
             no second registration of the adapter, and no HttpClient held in a singleton.
           - The client has AddStandardResilienceHandler (Microsoft.Extensions.Http.Resilience, versioned in
@@ -264,8 +264,8 @@ tests:
           - The port returns Result<Maybe<T>, Error>: the adapter turns a 404 into None, and a 5xx or timeout into
             Unavailable, catching only named exceptions. The use case turns None into a Validation error, which the
             existing ErrorResults mapping returns as 400. No HTTP exception crosses the port.
-          - Tests: the adapter is tested in IntegrationTests against a stub HTTP server (e.g. WireMock.Net) for success,
-            404, 5xx and timeout, without mocking HttpClient, HttpMessageHandler or IHttpClientFactory. OrderService and
+          - Tests: the adapter is tested in IntegrationTests/Infrastructure/Clients against a stub HTTP server (e.g.
+            WireMock.Net) for success, 404, 5xx and timeout, without mocking HttpClient, HttpMessageHandler or IHttpClientFactory. OrderService and
             endpoint unit tests replace the port with an in-memory fake in Fakes/ named InMemory<port name without I>.
             No test calls a real network.
           Score 0-1 by the share of points satisfied.
@@ -363,8 +363,10 @@ tests:
             stack asks for the built-in OpenAPI, so AddOpenApi is expected, and MapOpenApi only in the Development
             environment. Files that dotnet new generates and the diff leaves unchanged (such as the Logging and
             AllowedHosts settings) are not speculative.
-          - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests
-            (Infrastructure, Api). Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of
-            the repository, integration tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
+          - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests (Api).
+            The service has no HTTP client, so IntegrationTests has no Infrastructure folder: the endpoint tests test the
+            repository. The repository, DbContext, row types and migrations are in Infrastructure/Persistence.
+            Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of the repository, integration
+            tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
             expected values, names Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
