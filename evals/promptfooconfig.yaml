@@ -361,7 +361,8 @@ tests:
             80% line coverage; central package management; file-scoped namespaces outside generated migrations; sealed
             classes, test classes included; nothing speculative (no unused packages, abstractions or settings). The
             stack asks for the built-in OpenAPI, so AddOpenApi is expected, and MapOpenApi only in the Development
-            environment.
+            environment. Files that dotnet new generates and the diff leaves unchanged (such as the Logging and
+            AllowedHosts settings) are not speculative.
           - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests
             (Infrastructure, Api). Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of
             the repository, integration tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
