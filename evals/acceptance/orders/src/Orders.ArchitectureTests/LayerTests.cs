@@ -37,7 +37,7 @@ public sealed class LayerTests
     public void ProductionClasses_AreSealed_UnlessAbstract() =>
         FailingTypes(Types.InAssemblies([Load("Domain"), Load("Application"), Load("Infrastructure"), Load("Api")])
             .That().AreClasses().And().AreNotAbstract().And().DoNotHaveNameStartingWith("<")
-            .And().DoNotResideInNamespace("Orders.Infrastructure.Migrations")
+            .And().DoNotResideInNamespace("Orders.Infrastructure.Persistence.Migrations")
             .Should().BeSealed())
             .Should().BeEmpty();
 

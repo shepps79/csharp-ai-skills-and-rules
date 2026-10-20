@@ -3,7 +3,7 @@ using CSharpFunctionalExtensions;
 using Orders.Application;
 using Orders.Domain;
 
-namespace Orders.Infrastructure;
+namespace Orders.Infrastructure.Persistence;
 
 /// <summary>Stores orders in PostgreSQL.</summary>
 public sealed class PostgresOrderRepository(OrdersDbContext database) : IOrderRepository

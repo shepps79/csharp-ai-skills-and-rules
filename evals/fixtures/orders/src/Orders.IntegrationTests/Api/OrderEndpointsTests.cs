@@ -5,7 +5,7 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Orders.Application;
-using Orders.Infrastructure;
+using Orders.Infrastructure.Persistence;
 
 namespace Orders.IntegrationTests.Api;
 

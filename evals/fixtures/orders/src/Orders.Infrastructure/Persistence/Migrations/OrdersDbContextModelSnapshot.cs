@@ -3,21 +3,18 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Orders.Infrastructure;
+using Orders.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Orders.Infrastructure.Migrations
+namespace Orders.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    [Migration("20261019142251_InitialCreate")]
-    partial class InitialCreate
+    partial class OrdersDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -26,7 +23,7 @@ namespace Orders.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Orders.Infrastructure.OrderRow", b =>
+            modelBuilder.Entity("Orders.Infrastructure.Persistence.OrderRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -40,7 +37,7 @@ namespace Orders.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.ComplexCollection(typeof(List<Dictionary<string, object>>), "Lines", "Orders.Infrastructure.OrderRow.Lines#OrderLineRow", b1 =>
+                    b.ComplexCollection(typeof(List<Dictionary<string, object>>), "Lines", "Orders.Infrastructure.Persistence.OrderRow.Lines#OrderLineRow", b1 =>
                         {
                             b1.IsRequired();
 

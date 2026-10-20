@@ -1,4 +1,4 @@
-namespace Orders.Infrastructure;
+namespace Orders.Infrastructure.Persistence;
 
 /// <summary>The stored form of an order line.</summary>
 /// <param name="Sku">The product code.</param>

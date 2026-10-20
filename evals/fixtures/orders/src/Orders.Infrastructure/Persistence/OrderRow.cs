@@ -1,4 +1,4 @@
-namespace Orders.Infrastructure;
+namespace Orders.Infrastructure.Persistence;
 
 /// <summary>The stored form of an order.</summary>
 /// <param name="Id">The order id.</param>

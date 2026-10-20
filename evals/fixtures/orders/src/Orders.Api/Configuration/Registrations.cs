@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Orders.Api.Json;
 using Orders.Application;
-using Orders.Infrastructure;
+using Orders.Infrastructure.Persistence;
 
 namespace Orders.Api.Configuration;
 

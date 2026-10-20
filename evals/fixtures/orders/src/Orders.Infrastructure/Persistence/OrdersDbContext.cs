@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Orders.Infrastructure;
+namespace Orders.Infrastructure.Persistence;
 
 /// <summary>The PostgreSQL order store.</summary>
 public sealed class OrdersDbContext(DbContextOptions<OrdersDbContext> options) : DbContext(options)
