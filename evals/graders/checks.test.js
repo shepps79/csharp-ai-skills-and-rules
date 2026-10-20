@@ -115,12 +115,6 @@ test('testCancellationToken catches default and new tokens', () => {
   assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, TestContext.Current.CancellationToken);')), true);
 });
 
-test('skillsUsed grades the repo skills the agent loaded', () => {
-  const loaded = (...skills) => ({ agent: { skillsUsed: skills } });
-  assert.equal(passes('skillsUsed', {}, loaded('ponytail:ponytail'), { skills: ['configuration'] }), false);
-  assert.equal(passes('skillsUsed', {}, loaded('configuration', 'ef-core'), { skills: ['configuration'] }), true);
-});
-
 test('coverage scores changed production files, or everything for a tests-only change', () => {
   const coverage = (files) => ({ dotnet: { coverage: files } });
   const service = { 'src/X.Application/Service.cs': 'class S;' };

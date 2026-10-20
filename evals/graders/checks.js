@@ -206,12 +206,6 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
 
-  // Repo skills (.claude/skills) the task should load; other skills may load too.
-  skillsUsed: (_, { metadata, config }) => {
-    const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
-    return result(missing.length === 0, missing.length ? `skill not loaded: ${missing.join(', ')}` : 'ok');
-  },
-
   centralPackageManagement: (_, context) => {
     const enabled = matchingFiles(context, (file) => file === 'Directory.Packages.props',
       /<ManagePackageVersionsCentrally>\s*true/i).length > 0;

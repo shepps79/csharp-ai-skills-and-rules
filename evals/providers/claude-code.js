@@ -232,7 +232,6 @@ function summariseTranscript(events, result) {
     durationMs: result.duration_ms,
     isError: result.is_error,
     finalMessage: result.result,
-    skillsUsed: toolUses.filter((t) => t.name === 'Skill').map((t) => t.input?.skill),
     toolCounts,
     permissionDenials: result.permission_denials?.length ?? 0,
   };

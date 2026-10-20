@@ -138,7 +138,7 @@ the report exits 1 when the evals it prints have more than one.
   of them for a tests-only change; it needs coverlet.msbuild, and the provider runs `dotnet test
   -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura`, so the tests check also fails below the fixture's
   coverage gate. On greenfield, `coverletPackages` also requires every new test project to reference coverlet.collector
-  and coverlet.msbuild, versioned in `Directory.Packages.props`. `skillsUsed` grades the repo skills the agent loaded.
+  and coverlet.msbuild, versioned in `Directory.Packages.props`.
   `npm test` runs the graders' own tests; run it after changing a check.
 - `acceptance/`: hidden tests the agent never sees. After the agent's diff, build and coverage are taken, the provider
   copies `acceptance/<fixture>/` and `acceptance/<vars.acceptance>/` over the run dir and runs `dotnet test` on each
