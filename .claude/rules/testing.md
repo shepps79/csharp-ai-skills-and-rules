@@ -14,9 +14,8 @@ alwaysApply: true
 
 ## Rules
 - **TEST-002** MUST put the tests of a service in two projects in `src/`, not in a `tests/` directory:
-  `src/<Service>.UnitTests/` (folders `Domain/`, `Application/`, `Api/` and `Fakes/`) for each test that runs in
-  memory, and `src/<Service>.IntegrationTests/` (folders `Infrastructure/` and `Api/`) for each test that starts a
-  local container or stub server — the fast tests then run without Docker.
+  `src/<Service>.UnitTests/` for each test that runs in memory, and `src/<Service>.IntegrationTests/` for each test
+  that starts a local container or stub server — the fast tests then run without Docker.
 - **TEST-003** MUST name a test `Method_ExpectedBehavior_Scenario` instead of Khorikov's plain-English sentences. Omit
   the scenario when there is no condition — one template is easy to check.
 - **TEST-004** MUST replace an outbound port with its in-memory fake when one exists, instead of Khorikov's real

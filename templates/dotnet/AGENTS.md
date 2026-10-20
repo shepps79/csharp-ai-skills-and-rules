@@ -22,6 +22,22 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 - `WebApplicationFactory` (`Microsoft.AspNetCore.Mvc.Testing`) for endpoints.
 - Coverage: `coverlet.msbuild`. `Directory.Build.targets` makes `dotnet test` fail below 80% line coverage.
 
+## Structure
+```
+src/
+  <Service>.Domain/              Error.cs, one file for each aggregate or value object
+  <Service>.Application/         <Aggregate>Service.cs, I<Capability>.cs, <UseCase>Request.cs, <Aggregate>Dto.cs
+  <Service>.Infrastructure/      <Service>DbContext.cs, <Entity>Row.cs, Postgres<Capability>.cs, Migrations/
+  <Service>.Api/
+    Program.cs
+    Configuration/Registrations.cs   Add<Service>(): the composition root
+    Endpoints/                       <Aggregate>Endpoints.cs, ErrorResults.cs
+    Json/                            JSON converters
+  <Service>.UnitTests/           Domain/, Application/, Api/, Fakes/
+  <Service>.IntegrationTests/    PostgresDatabase.cs, Api/, Infrastructure/
+```
+A test class is `<Class under test>Tests`, in the folder of the layer of that class.
+
 ## Runbook
 Run from the repository root, where the solution file is.
 
