@@ -122,8 +122,9 @@ tests:
             container.
           - Tests use the InMemoryOrderRepository fake and real Order objects; a mock of the port appears only to force a
             failure, such as Unavailable to 503.
-          - Tests cover found and not-found, assert the status code and the typed body, contain no logic, use literal
-            expected values, AwesomeAssertions and TestContext.Current.CancellationToken, and are named
+          - Tests cover found and not-found, assert the status code and the typed body, contain no logic, use expected
+            values as literals, never taken from the production code (a value counted from the test's own responses is
+            fine), AwesomeAssertions and TestContext.Current.CancellationToken, and are named
             Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
 
@@ -369,6 +370,7 @@ tests:
             repository. The repository, DbContext, row types and migrations are in Infrastructure/Persistence.
             Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of the repository (a
             mock of the port only to force a failure, such as Conflict, Unavailable or an exception), integration tests
-            against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
-            expected values, names Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
+            against a PostgreSQL container. xUnit v3, AwesomeAssertions, expected
+            values as literals, never taken from the production code (a value counted from the test's own responses is
+            fine), names Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
