@@ -296,31 +296,6 @@ tests:
             unused options or settings).
           Score 0-1 by the share of points satisfied.
 
-  - description: add-telemetry (intent — tracing and metrics with built-in System.Diagnostics; skill — opentelemetry)
-    vars:
-      task: |
-        Operators need to see how long placing an order takes and how many orders are placed or rejected.
-        Add tracing and metrics for placing an order, exported over OTLP. Add tests.
-    assert:
-      - *acceptance
-      - { type: javascript, value: file://graders/checks.js:skillsUsed, metric: skills-used, config: { skills: [opentelemetry] } }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
-          and Api projects (ports and adapters, CSharpFunctionalExtensions).
-          Pass only if all of these hold:
-          - Placing an order starts an Activity from a named ActivitySource and records placed and rejected counts with
-            instruments created through IMeterFactory, tagged by outcome rather than encoded in instrument names.
-          - Application uses only System.Diagnostics types; the OpenTelemetry SDK and the OTLP exporter are configured in the
-            composition root, with the endpoint left to the standard OTEL_* settings rather than hard-coded.
-          - The new packages are added to Directory.Packages.props only.
-          - Tests observe the recorded activity and measurements (e.g. ActivityListener, MeterListener or
-            MetricCollector<T>) for a placed and a rejected order. Names reveal intent and there is no speculative
-            telemetry (no instruments nothing records).
-          Score 0-1 by the share of points satisfied.
-
   - description: night-review (intent — time comes from TimeProvider; trap — tempts DateTime.UtcNow)
     vars:
       task: |

@@ -117,8 +117,8 @@ test('testCancellationToken catches default and new tokens', () => {
 
 test('skillsUsed grades the repo skills the agent loaded', () => {
   const loaded = (...skills) => ({ agent: { skillsUsed: skills } });
-  assert.equal(passes('skillsUsed', {}, loaded('ponytail:ponytail'), { skills: ['opentelemetry'] }), false);
-  assert.equal(passes('skillsUsed', {}, loaded('opentelemetry', 'aspire'), { skills: ['opentelemetry'] }), true);
+  assert.equal(passes('skillsUsed', {}, loaded('ponytail:ponytail'), { skills: ['configuration'] }), false);
+  assert.equal(passes('skillsUsed', {}, loaded('configuration', 'ef-core'), { skills: ['configuration'] }), true);
 });
 
 test('coverage scores changed production files, or everything for a tests-only change', () => {

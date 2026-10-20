@@ -7,12 +7,12 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and ten tasks, each with one intent in its description:
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and nine tasks, each with one intent in its description:
   `delivery-note` (an optional value is a `Maybe`; `string?` trap), `get-order-endpoint` (absence is `NotFound`;
   endpoint tests through the real host), `customer-orders` (a sequence stays on the railway; fakes find by key),
   `cancel-order` (a type per lifecycle state), `reserve-stock` (adapter failures as Results; exception trap),
   `customer-name` (typed `HttpClient` tested against a stub server), `order-limits` (Options pattern; configuration
-  skill), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the rules should lead to
+  skill), `night-review` (`DateTime.UtcNow` trap: the rules should lead to
   `TimeProvider`), `greenfield-inventory` (new service). Each task that changes storage states an HTTP contract, so
   TEST-007's endpoint tests can cover the adapter and the TEST-011 gate can pass.
 - 41 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
@@ -32,10 +32,10 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 10 tasks × 2 variants × 5 = 100 agent
-   runs; at the last baseline's cost per run, roughly $19 and 1–1.5 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
+   runs; at the last baseline's cost per run, roughly $17 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
-3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
+3. **More skill-triggering tasks.** `order-limits` (configuration) grades on
    `skillsUsed`. Still missing: `ef-core`, `fast-endpoints` and `dependency-injection`. The workflow skills
    (`commit`, `code-review`, `create-pr`, `write-spec`, `write-tickets`, `writing-great-skills`)
    have no tasks either. `none` has no repo skills, so it fails `skillsUsed` by design.
@@ -45,10 +45,10 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    description likely misses wording like "configurable per environment".
 5. **Skill ablation.** `excludeRules` only drops rule files; `rules@WORKTREE` copies all of `.claude/`, skills included.
    Add an equivalent `excludeSkills` to measure what each skill adds. Until then, skill content is judged only
-   indirectly: the `order-limits` and `add-telemetry` rubrics grade what those skills teach, so a low score can't
+   indirectly: the `order-limits` rubric grades what the configuration skill teaches, so a low score can't
    tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
-6. **More hidden acceptance tests.** `reserve-stock`, `add-telemetry` and `night-review` have only the architecture
-   tests: their contracts (a warehouse stub, telemetry, a summary field) need a fixed contract in the task text first.
+6. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture
+   tests: their contracts (a warehouse stub, a summary field) need a fixed contract in the task text first.
 7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
    rules settle and run `eval-pairwise` in both orders.
 8. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
