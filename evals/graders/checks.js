@@ -87,6 +87,7 @@ module.exports = {
     noMatches(context, (file) => file.endsWith('.csproj'), /<PackageReference[^>]*Version=/,
       'package version set in a .csproj instead of Directory.Packages.props'),
 
+  // Tests go through public behaviour (endpoints, use cases), so they never need internals.
   noInternalsVisibleTo: (_, context) =>
     noMatches(context, () => true, /InternalsVisibleTo/, 'InternalsVisibleTo exposes internals to tests'),
 
@@ -107,22 +108,19 @@ module.exports = {
   noThrowInDomain: (_, context) =>
     noExceptionFlow(context, 'Domain', /\bthrow\b/, 'domain throws for an expected business failure'),
 
-  // Ports return Results (dotnet-functional.md), so a use case has nothing to catch: a catch means an adapter let an
-  // exception through its port, as hexagonal-architecture.md's "translate to an exception" suggests.
+  // Ports return Results, so a use case has nothing to catch: a catch means an adapter let an exception through its
+  // port.
   noExceptionsInApplication: (_, context) =>
     noExceptionFlow(context, 'Application', /\b(throw|catch)\b/, 'application throws or catches instead of composing Results'),
 
-  // testing.md's mocking example stubs a missing entity with (Order?)null and asserts BeNull().
   noNullInTests: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && isTestFile(file),
       /\(\s*[\w<>]+\?\s*\)\s*null\b|\.Returns(Async)?\(\s*null\b|\.Should\(\)\.BeNull\(\)/, 'test models absence with null'),
 
-  // Reading the system clock mid-logic makes code impure and its tests depend on when they run (dotnet-functional.md).
   noSystemClock: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && !isTestFile(file), /\bDateTime(Offset)?\.(Utc)?Now\b|\bDateTime\.Today\b/,
       'production code reads the system clock'),
 
-  // dotnet.md prefers built-ins: System.TimeProvider over a hand-rolled IClock-style port.
   usesTimeProvider: (_, context) => {
     const production = (file) => isCSharp(file) && !isTestFile(file);
     const uses = matchingFiles(context, production, /\bTimeProvider\b/);
@@ -134,7 +132,7 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : `TimeProvider in ${uses.join(', ')}`);
   },
 
-  // Microsoft's HttpClient guidance: typed clients from IHttpClientFactory (AddHttpClient<TClient>), no `new HttpClient`
+  // Typed clients from IHttpClientFactory (AddHttpClient<TClient>), no `new HttpClient`
   // (socket exhaustion, stale DNS), and no second registration of the typed client, which replaces the configured one.
   typedHttpClient: (_, context) => {
     const sources = productionSources(context);
@@ -150,14 +148,13 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : `typed clients: ${typedClients.join(', ')}`);
   },
 
-  // Microsoft's current guidance for outbound HTTP: the Microsoft.Extensions.Http.Resilience pipeline.
   httpResilience: (_, context) => {
     const used = productionSources(context).some(({ code }) => /\.Add(Standard)?ResilienceHandler\s*\(/.test(code));
     return result(used, used ? 'ok' : 'no AddStandardResilienceHandler (or AddResilienceHandler) on the HTTP client');
   },
 
-  // testing.md: Moq mocks only outbound ports (interfaces declared in Application), never concrete classes, loggers,
-  // HttpClient or domain types.
+  // A mock replaces only an outbound port (an interface declared in Application), never a concrete class, a logger,
+  // HttpClient or a domain type.
   mocksOnlyPorts: (_, context) => {
     const ports = applicationInterfaces(context.metadata.runDir);
     const wrong = testSources(context).flatMap(({ file, code }) => [...code.matchAll(/\bMock<\s*([\w.]+)/g)]
@@ -167,12 +164,11 @@ module.exports = {
     return result(wrong.length === 0, wrong.length ? `mocks something that isn't a port: ${[...new Set(wrong)].join('; ')}` : 'ok');
   },
 
-  // testing.md: don't assert on logging at all.
   noLoggerAssertions: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && isTestFile(file), /\bLogLevel\.\w+|FakeLogCollector|\.LatestRecord\b/,
       'test asserts on logging'),
 
-  // testing.md: no if/for/foreach/while/switch statements inside test methods (helpers after them are fine).
+  // Helpers after the test methods may branch and loop; the test methods themselves may not.
   noLogicInTests: (_, context) => {
     const hits = testSources(context).filter(({ code }) => testMethodBodies(code).some((body) =>
       /\b(if|for|foreach|while|switch)\s*\(/.test(body)));
@@ -250,7 +246,7 @@ module.exports = {
     return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
 
-  // Domain references no project; Application references only Domain; a web API adapter drives Application;
+  // Domain references no project and no framework; Application references only Domain; a web API adapter drives Application;
   // Infrastructure never references the API.
   layeredProjects: (_, { metadata }) => {
     const projects = metadata.changedFiles.filter((file) => file.endsWith('.csproj'));
@@ -282,7 +278,8 @@ module.exports = {
     return result(outside.length === 0, outside.length ? `projects outside src/: ${outside.join(', ')}` : 'ok');
   },
 
-  // testing.md: every test project references both coverlet packages, versioned centrally.
+  // No rule names coverlet, but the harness needs both packages, versioned centrally, in every test project to measure
+  // the coverage gate.
   coverletPackages: (_, { metadata }) => {
     const packages = ['coverlet.collector', 'coverlet.msbuild'];
     const references = (content, item) => packages.filter((name) => new RegExp(`<${item}\\s+Include="${name}"`, 'i').test(content));
@@ -306,6 +303,7 @@ module.exports = {
     return result(used, used ? 'ok' : 'CSharpFunctionalExtensions not in Directory.Packages.props');
   },
 
+  // The build's CA1852 checks only internal classes, and test classes are public.
   sealedTestClasses: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && isTestFile(file), /^(?!.*\b(sealed|static|abstract)\b).*\bclass\s+\w+Tests?\b/m,
       'test class not sealed'),
