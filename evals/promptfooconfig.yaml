@@ -366,7 +366,8 @@ tests:
           - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests (Api).
             The service has no HTTP client, so IntegrationTests has no Infrastructure folder: the endpoint tests test the
             repository. The repository, DbContext, row types and migrations are in Infrastructure/Persistence.
-            Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of the repository, integration
-            tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
+            Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of the repository (a
+            mock of the port only to force a failure, such as Conflict, Unavailable or an exception), integration tests
+            against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
             expected values, names Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
