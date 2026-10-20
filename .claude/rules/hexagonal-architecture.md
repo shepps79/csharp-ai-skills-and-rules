@@ -32,7 +32,8 @@ alwaysApply: true
   `AddStandardResilienceHandler()`. MUST NOT create an `HttpClient` with `new` — the factory manages sockets, and the
   handler adds retries and timeouts.
 - **HEX-011** MUST write inbound HTTP adapters as ASP.NET Core minimal APIs: one `MapGroup` for each aggregate,
-  and `TypedResults`.
+  `TypedResults`, and the OpenAPI document (`AddOpenApi`, and `MapOpenApi` only in the Development environment) —
+  `TypedResults` then put each status code and body in the document, and clients read the contract from the service.
 - **HEX-012** MUST map `Error` to ProblemDetails in one place: `Validation` 400, `NotFound` 404, `Conflict` 409,
   `Unavailable` 503 — all endpoints then give the same status for the same failure.
 - **HEX-013** SHOULD return the Application DTO as the response body, unless e.g. the wire shape must differ — a

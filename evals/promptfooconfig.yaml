@@ -359,7 +359,9 @@ tests:
           - Solution hygiene: a Directory.Build.props that sets TargetFramework, Nullable, TreatWarningsAsErrors,
             EnforceCodeStyleInBuild and GenerateDocumentationFile; a Directory.Build.targets that fails dotnet test below
             80% line coverage; central package management; file-scoped namespaces outside generated migrations; sealed
-            classes, test classes included; nothing speculative (no unused packages, abstractions or settings).
+            classes, test classes included; nothing speculative (no unused packages, abstractions or settings). The
+            stack asks for the built-in OpenAPI, so AddOpenApi is expected, and MapOpenApi only in the Development
+            environment.
           - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests
             (Infrastructure, Api). Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of
             the repository, integration tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
