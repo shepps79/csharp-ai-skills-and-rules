@@ -50,3 +50,6 @@ alwaysApply: true
   fails at startup.
 - **NET-023** MUST, in the composition root (HEX-015), register stateless services as transient, configuration and
   telemetry as singleton, and services that use a `DbContext` as scoped.
+- **NET-024** SHOULD keep types that change together in one file, named after the main type, instead of one type per
+  file, unless e.g. a type is used by more than one other type (a request record and the line record that only it
+  uses stay together) — one change then edits one file.
