@@ -202,11 +202,20 @@ test('noLogicInTests catches control flow in test methods, not in helpers after 
   assert.equal(passes('noLogicInTests', tests(`[Fact]\n    public void A_B()\n    {\n        sut.Do().Should().BeTrue();\n    }\n${helper}`)), true);
 });
 
-test('preferRealCollaborators fails a mock of a port that has a usable real adapter', () => {
+test('preferRealCollaborators fails a mock of a port that has a fake, unless it only forces a failure', () => {
   const config = { prefer: { IOrderRepository: 'InMemoryOrderRepository' } };
-  const tests = (code) => ({ 'src/X.UnitTests/STests.cs': code });
-  assert.equal(passes('preferRealCollaborators', tests('new Mock<IOrderRepository>()'), {}, config), false);
-  assert.equal(passes('preferRealCollaborators', tests('new OrderService(new InMemoryOrderRepository())'), {}, config), true);
+  const prefersFake = (code) => passes('preferRealCollaborators', { 'src/X.UnitTests/STests.cs': code }, {}, config);
+  const setup = (name, returned) => `${name}.Setup(r => r.FindAsync(It.IsAny<OrderId>(), It.IsAny<CancellationToken>()))\n`
+    + `    .ReturnsAsync(${returned});`;
+  const failure = 'Result.Failure<Maybe<Order>, Error>(Error.Unavailable("down"))';
+  assert.equal(prefersFake('new OrderService(new InMemoryOrderRepository())'), true);
+  assert.equal(prefersFake(`var repository = new Mock<IOrderRepository>();\n${setup('repository', failure)}`), true);
+  assert.equal(prefersFake(`private readonly Mock<IOrderRepository> _repository = new();\n${setup('_repository', failure)}`), true);
+  assert.equal(prefersFake(`var repository = new Mock<IOrderRepository>();\n${setup('repository', 'Maybe.From(order)')}`), false);
+  assert.equal(prefersFake(`var repository = new Mock<IOrderRepository>();\n${setup('repository', failure)}\n`
+    + `${setup('repository', 'Maybe<Order>.None')}`), false);
+  assert.equal(prefersFake('var repository = new Mock<IOrderRepository>();\nrepository.Verify(r => r.AddAsync(order, ct));'), false);
+  assert.equal(prefersFake('var sut = new OrderService(Mock.Of<IOrderRepository>());'), false);
 });
 
 test('endpointTestsThroughHost requires the real host and composition root', () => {

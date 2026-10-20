@@ -185,12 +185,12 @@ module.exports = {
     return result(problems.length === 0, problems.length ? [...new Set(problems)].join('; ') : 'ok');
   },
 
-  // Prefer the real adapter over a mock when one exists and the test can observe it: `config.prefer` maps
-  // port to adapter, e.g. { IOrderRepository: InMemoryOrderRepository }.
+  // A port with a fake is mocked only to force a failure: `config.prefer` maps port to fake,
+  // e.g. { IOrderRepository: InMemoryOrderRepository }.
   preferRealCollaborators: (_, context) => {
     const mocked = Object.entries(context.config.prefer).flatMap(([port, adapter]) => testSources(context)
-      .filter(({ code }) => new RegExp(`\\bMock<\\s*${port}\\s*>`).test(code))
-      .map(({ file }) => `${file} mocks ${port}; use ${adapter}`));
+      .filter(({ code }) => mocksBeyondFailurePaths(code, port))
+      .map(({ file }) => `${file} mocks ${port} for more than a failure path; use ${adapter}`));
     return result(mocked.length === 0, mocked.length ? mocked.join('; ') : 'ok');
   },
 
@@ -352,14 +352,40 @@ function tautologies(body, types) {
     ]);
 }
 
+// True when a mock of `port` has no setups, or a setup that returns anything but a failure Result.
+function mocksBeyondFailurePaths(code, port) {
+  if (new RegExp(`\\bMock\\.Of<\\s*${port}\\s*>`).test(code)) {
+    return true;
+  }
+  if (!new RegExp(`\\bMock<\\s*${port}\\s*>`).test(code)) {
+    return false;
+  }
+  const names = [...code.matchAll(new RegExp(`(\\w+)\\s*=\\s*new\\s+Mock<\\s*${port}\\s*>|\\bMock<\\s*${port}\\s*>\\s+(\\w+)`, 'g'))]
+    .map((m) => m[1] ?? m[2]);
+  const returnsFailure = (setup) => {
+    const rest = code.slice(closingParen(code, setup.index + setup[0].length));
+    const returns = rest.match(/^\s*\.Returns(?:Async)?\(/);
+    return returns !== null && /\bFailure\b|\bError\.\w+\(/.test(argumentsAt(rest, returns[0].length));
+  };
+  return names.length === 0 || names.some((name) => {
+    const setups = [...code.matchAll(new RegExp(`\\b${name}\\.Setup\\w*\\(`, 'g'))];
+    return setups.length === 0 || !setups.every(returnsFailure);
+  });
+}
+
 // The text between the parenthesis opened just before `start` and its matching close.
 function argumentsAt(text, start) {
+  return text.slice(start, closingParen(text, start) - 1).trim();
+}
+
+// The index just past the parenthesis that closes the one opened just before `start`.
+function closingParen(text, start) {
   let depth = 1;
   let end = start;
   for (; end < text.length && depth > 0; end += 1) {
     depth += { '(': 1, ')': -1 }[text[end]] ?? 0;
   }
-  return text.slice(start, end - 1).trim();
+  return end;
 }
 
 // Maybe.From(order) and Result.Success(order) carry the same value as order.
