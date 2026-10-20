@@ -293,7 +293,7 @@ tests:
             of 50, and validated at startup (ValidateDataAnnotations or Validate, plus ValidateOnStart).
           - Exceeding the limit is a Validation failure Result, returned rather than thrown, which the existing
             ErrorResults mapping returns as 400.
-          - Domain stays free of configuration types; the limit reaches the rule as a plain value.
+          - The line-limit rule lives in Domain, free of configuration types; the limit reaches it as a plain value.
           - Tests cover an order at the limit and one over it, with literal expected values; nothing speculative (no
             unused options or settings).
           Score 0-1 by the share of points satisfied.
