@@ -37,7 +37,7 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) grades on
    `skillsUsed`. Still missing: `ef-core`, `fast-endpoints` and `dependency-injection`. The workflow skills
-   (`commit`, `code-review`, `create-pr`, `write-spec`, `write-tickets`, `writing-great-skills`)
+   (`commit`, `code-review`, `write-spec`, `write-tickets`, `writing-great-skills`)
    have no tasks either. `none` has no repo skills, so it fails `skillsUsed` by design.
 4. **Check the configuration skill's trigger.** In the one `order-limits` smoke run (`rules@WORKTREE`), the agent never
    loaded `configuration` and read the limit with `IConfiguration.GetValue` instead of the Options pattern, failing
