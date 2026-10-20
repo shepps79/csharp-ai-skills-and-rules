@@ -361,7 +361,8 @@ tests:
             80% line coverage; central package management; file-scoped namespaces outside generated migrations; sealed
             classes, test classes included; nothing speculative (no unused packages, abstractions or settings). The
             stack asks for the built-in OpenAPI, so AddOpenApi is expected, and MapOpenApi only in the Development
-            environment. Files that dotnet new generates and the diff leaves unchanged (such as the Logging and
+            environment. The stack also asks for Meziantou.Analyzer with MeziantouAnalysisMode None, and .editorconfig
+            turns on the rules that it uses (MA0053), so that setup is not speculative. Files that dotnet new generates and the diff leaves unchanged (such as the Logging and
             AllowedHosts settings) are not speculative.
           - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests (Api).
             The service has no HTTP client, so IntegrationTests has no Infrastructure folder: the endpoint tests test the
