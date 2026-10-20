@@ -25,6 +25,8 @@ public sealed class OrdersApi : WebApplicationFactory<Program>, IAsyncLifetime
         await _database.DisposeAsync();
     }
 
+    // The base URL lets a host that validates its options at startup start for the migration; each test overrides it.
     protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder.UseSetting("ConnectionStrings:Orders", _database.GetConnectionString());
+        builder.UseSetting("ConnectionStrings:Orders", _database.GetConnectionString())
+            .UseSetting("Customers:BaseUrl", "http://customers.test/");
 }
