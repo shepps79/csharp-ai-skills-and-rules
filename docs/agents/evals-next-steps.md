@@ -4,7 +4,7 @@ The eval harness in `evals/` (see `evals/README.md`) runs Claude Code headless a
 for each variant (`none`, `rules@WORKTREE`) and grades the result with deterministic
 checks, hidden acceptance tests and a local `claude -p` judge. Everything stays local; promptfoo telemetry and sharing are off.
 
-## Current state
+## Current state (2026-10-20)
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
 - Two fixtures (`fixtures/orders`, `fixtures/empty`) and nine tasks, each with one intent in its description:
@@ -15,77 +15,48 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
   (`DateTime.UtcNow` trap: the rules should lead to `TimeProvider`), `greenfield-inventory` (new service). Each task
   that changes storage states an HTTP contract, so TEST-007's endpoint tests can cover the adapter and the TEST-011
   gate can pass.
-- 41 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
-- Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
+- 40 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and HTTP
   contract tests for every task whose text fixes one: `delivery-note`, `get-order-endpoint`, `customer-orders`,
   `cancel-order`, `customer-name` and `order-limits`. The `customer-name` tests stub every `IHttpClientFactory`
   client's primary handler, so code that creates its own `HttpClient` fails them.
-- Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores
-  the line coverage of the production files the agent changed.
 - Ablation (`config.excludeRules`), pairwise judging (`npm run eval-pairwise`), a cross-eval fingerprint guard
   (`npm run report -- <id> <id>` exits 1 on a mismatch) and per-variant turns, tokens, cost and minutes are in place.
-- In the first baseline, all rule files together cost ~21.8k tokens per session.
-- `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
-  `env` (global setup, no repo rules) is removed too; restore it with `{ variant: env }` when needed.
-- The tasks, rubrics, checks and judge prompt changed on 2026-10-20 to match the rewritten rules; results graded
-  before then aren't comparable.
+- The repo ships rules only. Every C# skill was removed: each repeated what the model already knows, and most taught
+  against the rules. `rules@WORKTREE` keeps the two workflow skills (`commit`, `code-review`) out with `skills: []`.
+- The 8 rule files cost ~11.2k tokens per session (`/context`, 2026-10-20).
+- No eval has run against the current tasks. The two evals in `evals/.promptfoo` are smoke runs from before the
+  2026-10-20 rewrite of the tasks, rubrics, checks and judge prompt, so they aren't comparable.
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
+1. **Record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
    runs; at the last baseline's cost per run, roughly $17 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
-3. **Skill-triggering tasks.** No task grades a skill: the `configuration` skill was removed, as the model and NET-022
-   already cover it (an `order-limits` run wrote the Options pattern without loading it). When a skill in
-   `.claude/wip/` is ready, add a task that grades it with `skillsUsed`, add it to `config.skills`, and run with and
-   without it to measure what it adds.
-4. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture
-   tests: their contracts (a warehouse stub, a summary field) need a fixed contract in the task text first.
-5. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
-   rules settle and run `eval-pairwise` in both orders.
-6. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
+   A file whose removal changes nothing is dead weight or ignored.
+3. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
    the agent's production code, not its tests, and only one judge-rubric line covers the tests. Add an
    `httpTestDoubles` check for `customer-name` and `reserve-stock` that fails tests which mock `HttpClient` (its
    `GetAsync` family isn't virtual, so the setup never intercepts) or `IHttpClientFactory` (only needed by code calling
    `CreateClient`, which `typedHttpClient` already fails), or that call a real `http(s)://` host. It should pass port
    fakes and mocks for service tests, and a stub HTTP server (e.g. WireMock.Net) for adapter tests (TEST-006 forbids a
    mocked `HttpMessageHandler`).
+4. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture tests: their
+   contracts (a warehouse stub, a summary field) need a fixed contract in the task text first.
+5. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
+   rules settle and run `eval-pairwise` in both orders.
 
-## Rule problems the evals now surface
+## Known gaps
 
-The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the rule that now owns it:
-
-- Unit tests with TestContainers vs Moq, and mock-first vs real collaborators: TEST-001 (Khorikov's classical school)
-  and TEST-004 and TEST-005 (in-memory fakes without storage rules, Moq only for a port without a fake or for a failure
-  path). Measured by
-  `get-order-endpoint`, `customer-orders`, `preferRealCollaborators` and `endpointTestsThroughHost`.
-- `(Order?)null` in test examples: FUNC-006 and FUNC-010 (`Result<Maybe<T>, Error>` from lookups, no `null` inside)
-  (`delivery-note`, `get-order-endpoint`, `noNullInTests`).
-- Application exceptions vs `Result`: FUNC-003, FUNC-004 and FUNC-007 (errors are values; adapters catch only named
-  infrastructure exceptions) (`reserve-stock`, `noExceptionsInApplication`).
-- `Async` suffix vs test names: NET-009 exempts test methods.
-- `IClock` vs `TimeProvider`: HEX-009 (`night-review`, `noSystemClock`, `usesTimeProvider`).
-- Outbound HTTP: HEX-010 (typed client, standard resilience handler); adapter tests: TEST-006 (WireMock.Net, no
-  mocked `HttpClient`) (`customer-name`, `reserve-stock`, `typedHttpClient`, `httpResilience`).
-- Production code as the oracle: TEST-001 (Khorikov's anti-pattern of leaking domain knowledge to tests) (`independentExpectations`).
-- `tests/` paths vs flat layout: TEST-002 (`src/<Service>.UnitTests` and `src/<Service>.IntegrationTests`).
-
-Still open:
-
-- No task probes TEST-001's tautological-test anti-pattern since `summary-tests` was removed; `independentExpectations`
+- No task tempts TEST-001's tautological-test anti-pattern since `summary-tests` was removed; `independentExpectations`
   runs on every task but nothing tempts the agent to break it.
 - HEX-012, DDD-003 to DDD-012 and TEST-005 are graded only by the judge; no deterministic check covers them.
-
-## Compiler-enforced rules
-
-`templates/dotnet/.editorconfig` + `Directory.Build.props` turn the checkable parts of `.claude/rules` into build
-errors; copy both into any .NET repo (the analyzers need central package management). Known gaps, still prose-only:
-
-- `String` vs `string` (IDE0049): configured, but not reported at build by SDK 10.0.301; editor only.
-- Function length, parameter count, nesting depth, commented-out code, LINQ over loops, `InternalsVisibleTo`:
-  no analyzer here (Sonar covers some). Sealed classes are checked by the `orders` architecture tests, and
-  `noInternalsVisibleTo` and similar eval checks cover a few others.
-- NET-002 to NET-004 tell the agent to keep the build guards, never suppress diagnostics and set them up on greenfield work.
+- `templates/dotnet/.editorconfig` and `Directory.Build.props` turn the checkable rules into build errors, but some stay
+  prose-only:
+  - `String` vs `string` (IDE0049): configured, but not reported at build by SDK 10.0.301; editor only.
+  - Function length, parameter count, nesting depth, commented-out code, LINQ over loops, `InternalsVisibleTo`: no
+    analyzer here (Sonar covers some). Sealed classes are checked by the `orders` architecture tests, and
+    `noInternalsVisibleTo` and similar eval checks cover a few others.
 
 ## Things to keep in mind
 
@@ -93,5 +64,8 @@ errors; copy both into any .NET repo (the analyzers need central package managem
   and re-run the baseline after.
 - Single runs are noisy. Use `--repeat 5` or more; differences under about 7–15 points are noise at that size,
   and repeats often produce byte-identical code, so confirm a gain with a second eval.
+- `rules@HEAD` (a same-run control) and `env` (global setup, no repo rules) are commented out of the providers;
+  restore them with `{ variant: rules, rulesRef: HEAD }` and `{ variant: env }`.
 - The global setup (RTK, ponytail, CLAUDE.md and its imports, skills, agents, commands, plugin contents) is
-  deliberately part of the `rules@*` variants (and `env` when restored). If it changes, the fingerprint changes and the baseline must be re-run.
+  deliberately part of the `rules@*` variants (and `env` when restored). If it changes, the fingerprint changes and
+  the baseline must be re-run.
