@@ -263,3 +263,49 @@ test('buildSettings requires the build-guard MSBuild settings and a coverage gat
   }), false);
   assert.equal(passes('buildSettings', { 'Directory.Build.props': props, 'Directory.Build.targets': targets.replace('80', '50') }), false);
 });
+
+test('noStringErrors fails string errors, not Result<T, Error> or UnitResult<Error>', () => {
+  const service = (code) => ({ 'src/X.Application/S.cs': code });
+  assert.equal(passes('noStringErrors', service('public Task<Result<OrderSummary>> PlaceAsync(R r);')), false);
+  assert.equal(passes('noStringErrors', service('public Result Validate(R r) => Result.Success();')), false);
+  assert.equal(passes('noStringErrors', service('return Result.Failure<Order>("no lines");')), false);
+  assert.equal(passes('noStringErrors', service('Task<Result<Maybe<Order>, Error>> FindAsync(OrderId id);\n'
+    + 'Task<UnitResult<Error>> AddAsync(Order o);\nResult.Combine<Error>(a, b);')), true);
+});
+
+test('noUncheckedResultAccess fails IsSuccess and HasValue in production code only', () => {
+  assert.equal(passes('noUncheckedResultAccess', { 'src/X.Application/S.cs': 'if (result.IsSuccess) { return result.Value; }' }), false);
+  assert.equal(passes('noUncheckedResultAccess', { 'src/X.Infrastructure/R.cs': 'return found.HasValue ? found.Value : x;' }), false);
+  assert.equal(passes('noUncheckedResultAccess', { 'src/X.Application/S.cs': 'result.Match(ok => ok.Value, error => 0);' }), true);
+  assert.equal(passes('noUncheckedResultAccess', { 'src/X.UnitTests/STests.cs': 'result.IsSuccess.Should().BeTrue();' }), true);
+});
+
+test('noNotImplementedException fails NotImplementedException anywhere', () => {
+  assert.equal(passes('noNotImplementedException', { 'src/X.Domain/O.cs': '_ => throw new NotImplementedException(),' }), false);
+  assert.equal(passes('noNotImplementedException', { 'src/X.Domain/O.cs': '_ => throw new UnreachableException(),' }), true);
+});
+
+test('logMessageTemplates fails interpolated and concatenated log messages', () => {
+  const service = (code) => ({ 'src/X.Application/S.cs': code });
+  assert.equal(passes('logMessageTemplates', service('logger.LogInformation($"Placed {order.Id}");')), false);
+  assert.equal(passes('logMessageTemplates', service('logger.LogWarning(exception, "Failed " + id);')), false);
+  assert.equal(passes('logMessageTemplates', service('logger.Log(LogLevel.Error, $"Failed {id}");')), false);
+  assert.equal(passes('logMessageTemplates', service('logger.LogInformation("Placed {OrderId}", order.Id);')), true);
+});
+
+test('noSleepInTests fails real waits, not delays driven by a fake TimeProvider', () => {
+  const tests = (code) => ({ 'src/X.UnitTests/STests.cs': code });
+  assert.equal(passes('noSleepInTests', tests('Thread.Sleep(100);')), false);
+  assert.equal(passes('noSleepInTests', tests('await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);')), false);
+  assert.equal(passes('noSleepInTests', tests('var delay = Task.Delay(TimeSpan.FromMinutes(5), timeProvider);')), true);
+});
+
+test('noUseCaseInterfaces fails an I...UseCase interface', () => {
+  assert.equal(passes('noUseCaseInterfaces', { 'src/X.Application/IPlaceOrderUseCase.cs': 'public interface IPlaceOrderUseCase;' }), false);
+  assert.equal(passes('noUseCaseInterfaces', { 'src/X.Application/IOrderRepository.cs': 'public interface IOrderRepository;' }), true);
+});
+
+test('minimalApis fails MVC controllers', () => {
+  assert.equal(passes('minimalApis', { 'src/X.Api/OrdersController.cs': '[ApiController]\npublic sealed class OrdersController : ControllerBase;' }), false);
+  assert.equal(passes('minimalApis', { 'src/X.Api/Endpoints/OrderEndpoints.cs': 'var orders = endpoints.MapGroup("/orders");' }), true);
+});

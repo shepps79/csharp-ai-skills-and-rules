@@ -7,6 +7,7 @@ const path = require('node:path');
 const isTestFile = (file) => /Tests?\//.test(file) || /Tests?\.cs$/.test(file);
 const isCSharp = (file) => file.endsWith('.cs');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+const stripStrings = (code) => code.replace(/"""[\s\S]*?"""|[$@]*"(?:[^"\\]|\\.)*"/g, '""');
 // Files the fixture ships to make the build the gate for the compiler-enforced rules.
 const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props', 'Directory.Build.targets'];
 const REPO_SKILLS = fs.readdirSync(path.resolve(__dirname, '../../.claude/skills'));
@@ -314,6 +315,45 @@ module.exports = {
       /CancellationToken\.None|default\(CancellationToken\)|new\s+CancellationToken\(|[(,]\s*default\s*\)/,
       'tests should pass TestContext.Current.CancellationToken'),
 
+  // Catches Result<T>, a non-generic Result and Result.Failure("...").
+  noStringErrors: (_, context) => {
+    const hits = productionSources(context).filter(({ code }) =>
+      /\bResult<\s*[\w.?]+(?:<[^<>]*>)?\s*>|<\s*Result\s*>|\bResult\s+[A-Z]\w*\s*\(|\bResult\.Failure(?:<[^>]*>)?\(\s*[@$]*"/.test(code));
+    return result(hits.length === 0, hits.length ? `string errors: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  // .Value is not flagged: constrained types expose their value through it.
+  noUncheckedResultAccess: (_, context) => {
+    const hits = productionSources(context).filter(({ code }) => /\.(?:IsSuccess|IsFailure|HasValue|HasNoValue)\b/.test(stripStrings(code)));
+    return result(hits.length === 0, hits.length ? `IsSuccess/HasValue read in production code: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  noNotImplementedException: (_, context) => {
+    const hits = sources(context, isCSharp).filter(({ code }) => /\bNotImplementedException\b/.test(stripStrings(code)));
+    return result(hits.length === 0, hits.length ? `NotImplementedException in ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  logMessageTemplates: (_, context) => {
+    const hits = productionSources(context).filter(({ code }) => [...code.matchAll(/\.Log(?:Trace|Debug|Information|Warning|Error|Critical)?\s*\(/g)]
+      .some((m) => /\$@?"|@\$"|"\s*\+|\+\s*"/.test(argumentsAt(code, m.index + m[0].length))));
+    return result(hits.length === 0, hits.length ? `interpolated log message in ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  // Task.Delay with a fake TimeProvider waits no real time, so it is allowed.
+  noSleepInTests: (_, context) => {
+    const hits = testSources(context).filter(({ code }) => [...code.matchAll(/\bThread\.Sleep\s*\(|\bTask\.Delay\s*\(/g)]
+      .some((m) => !/TimeProvider|clock/i.test(argumentsAt(code, m.index + m[0].length))));
+    return result(hits.length === 0, hits.length ? `test waits for real time: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
+  noUseCaseInterfaces: (_, context) =>
+    noMatches(context, (file) => isCSharp(file) && !isTestFile(file), /\binterface\s+I\w*UseCase\b/, 'use-case interface'),
+
+  minimalApis: (_, context) => {
+    const hits = productionSources(context).filter(({ code }) =>
+      /[:,]\s*(?:Microsoft\.AspNetCore\.Mvc\.)?Controller(?:Base)?\b|\[ApiController\b/.test(code));
+    return result(hits.length === 0, hits.length ? `MVC controller in ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
 };
 
 function noExceptionFlow(context, layer, pattern, problem) {

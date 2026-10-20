@@ -36,6 +36,13 @@ defaultTest:
     - { type: javascript, value: file://graders/checks.js:sealedTestClasses, metric: sealed-test-classes }
     - { type: javascript, value: file://graders/checks.js:testCancellationToken, metric: test-cancellation-token }
     - { type: javascript, value: file://graders/checks.js:mocksOnlyPorts, metric: mocks-only-ports }
+    - { type: javascript, value: file://graders/checks.js:noStringErrors, metric: no-string-errors }
+    - { type: javascript, value: file://graders/checks.js:noUncheckedResultAccess, metric: no-unchecked-result-access }
+    - { type: javascript, value: file://graders/checks.js:noNotImplementedException, metric: no-not-implemented-exception }
+    - { type: javascript, value: file://graders/checks.js:logMessageTemplates, metric: log-message-templates }
+    - { type: javascript, value: file://graders/checks.js:noSleepInTests, metric: no-sleep-in-tests }
+    - { type: javascript, value: file://graders/checks.js:noUseCaseInterfaces, metric: no-use-case-interfaces }
+    - { type: javascript, value: file://graders/checks.js:minimalApis, metric: minimal-apis }
     - { type: javascript, value: file://graders/checks.js:noLoggerAssertions, metric: no-logger-assertions }
     - { type: javascript, value: file://graders/checks.js:noLogicInTests, metric: no-logic-in-tests }
     - { type: javascript, value: file://graders/checks.js:independentExpectations, metric: independent-expectations }
