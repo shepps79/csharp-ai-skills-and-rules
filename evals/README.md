@@ -21,7 +21,9 @@ npm run eval-baseline -- --repeat 5                          # every variant, in
 npm run eval-pairwise                                        # judge picks rules@HEAD or rules@WORKTREE per task
 PAIRWISE_SWAP=1 npm run eval-pairwise                        # the same with the order swapped
 npm run view                                                 # local results UI
-npm run clean                                                # delete ALL results and run dirs, baseline included
+npm run clean                                                # delete ALL results and run dirs and kept sessions, baseline included
+EVAL_KEEP_SESSIONS=1 npm run eval -- --filter-pattern cancel-order   # keep the agent sessions to resume
+npm run eval-session                                         # resume the newest kept session and ask the agent
 ```
 
 `clean` refuses while an eval is running. Restart `npm run view` afterwards, as it holds the deleted results open.
@@ -95,6 +97,13 @@ A result's output is the git diff of everything the agent changed. A cell is PAS
 - To browse the full solution, open the run dir: `ls -td ${TMPDIR:-/tmp}/csharp-skills-evals/*/repo | head` (newest first), then
   `code <dir>` or `git -C <dir> diff --cached HEAD`. `transcript.jsonl` beside it shows how the agent got there.
   Run dirs live in the temp folder, so they disappear when the machine restarts.
+- To ask the agent why it did something, run the eval with `EVAL_KEEP_SESSIONS=1`, then `npm run eval-session` (the
+  newest kept run) or `npm run eval-session -- <run id>` (the directory name under `csharp-skills-evals/`). Extra
+  arguments go to `claude`, e.g. `-p "Why did you return string? here?"` for one answer without the interactive UI. The
+  thinking text isn't in the transcripts, so this is the way to get at reasons, but the answer is the agent's
+  reconstruction, not the reasoning it had. The run dir by then also holds the hidden acceptance tests, so don't
+  resume a run that is still being graded. Sessions are off by default because each run would add one to your
+  session list; `npm run clean` removes them.
 - To follow what the agent did, `npm run transcripts` writes `${TMPDIR:-/tmp}/csharp-skills-evals/index.html`: evals,
   then each eval's runs (failed first), then a run's diff (per file) and timeline of messages, thinking and tool calls (subagents nested). "Browse final
   code" opens `<run>/code.html`, a source tree of the repo on disk, hidden acceptance tests included.

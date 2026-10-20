@@ -7,10 +7,11 @@
     "eval-baseline": "npm run promptfoo -- eval --no-cache --no-share --description baseline",
     "eval-pairwise": "npm run promptfoo -- eval --no-cache --no-share -c pairwise.js",
     "view": "npm run promptfoo -- view --yes",
+    "eval-session": "node session.js",
     "report": "node report.js",
     "transcripts": "node transcripts.js",
     "test": "node --test graders/*.test.js transcripts.test.js",
-    "clean": "if pgrep -f \"promptfoo[ ]eval\" >/dev/null; then echo \"An eval is still running; let it finish first.\" >&2; exit 1; fi; rm -rf .promptfoo \"${TMPDIR:-/tmp}/csharp-skills-evals\" && echo \"Removed all eval results and run directories.\""
+    "clean": "if pgrep -f \"promptfoo[ ]eval\" >/dev/null; then echo \"An eval is still running; let it finish first.\" >&2; exit 1; fi; rm -rf .promptfoo \"${TMPDIR:-/tmp}/csharp-skills-evals\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\"/projects/*csharp-skills-evals* && echo \"Removed all eval results, run directories and kept sessions.\""
   },
   "devDependencies": {
     "js-yaml": "5.4.1",

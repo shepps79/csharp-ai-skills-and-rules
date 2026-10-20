@@ -104,7 +104,11 @@ function copyRules(rulesRef, runDir) {
 
 function runAgent(prompt, runDir, { variant, model, effort }) {
   const args = ['-p', prompt, '--model', model, '--effort', effort, '--permission-mode', 'auto',
-    '--output-format', 'stream-json', '--verbose', '--no-session-persistence'];
+    '--output-format', 'stream-json', '--verbose'];
+  // EVAL_KEEP_SESSIONS=1 keeps each session, so `npm run eval-session` can resume it and ask the agent about its choices.
+  if (process.env.EVAL_KEEP_SESSIONS !== '1') {
+    args.push('--no-session-persistence');
+  }
   const env = { ...process.env };
   if (variant === 'none') {
     args.push('--setting-sources', '', '--strict-mcp-config');
