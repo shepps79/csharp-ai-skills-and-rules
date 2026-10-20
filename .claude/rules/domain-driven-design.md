@@ -40,6 +40,11 @@ alwaysApply: true
   compares collections by reference.
 - **DDD-014** MUST write a domain service only for logic that spans aggregates. It is pure and stateless, uses no
   ports and has the name of the domain activity (`PricingPolicy`) — logic of one aggregate belongs on that aggregate.
+- **DDD-015** MUST put each business rule (a check, limit, threshold or flag on domain values) in Domain, as a method
+  of the aggregate or a constrained type. Pass configured values and the instant in as arguments, and store a fact about
+  the aggregate (when it was placed) on the aggregate. Application only parses, calls ports and the domain, and maps; a
+  DTO's `From` copies values and decides nothing — a rule in Application has no domain tests, and the next use case
+  copies it.
 
 ## Examples
 A constrained type, and a lifecycle with two states:
