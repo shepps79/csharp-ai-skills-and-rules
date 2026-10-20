@@ -26,7 +26,7 @@ alwaysApply: true
 - **FUNC-007** MUST, in an adapter, catch only the named exceptions of the technology that it wraps (`DbException`,
   `DbUpdateException`, `HttpRequestException`, `TimeoutRejectedException`, `BrokenCircuitException`) and return an
   `Error` (a unique-key violation is `Conflict`, an outage is `Unavailable`). MUST NOT catch `Exception`. MUST let
-  `OperationCanceledException` go up — other exceptions are bugs and go to the global 500 handler (HEX-015).
+  `OperationCanceledException` go up — other exceptions are bugs and go to the global 500 handler (HEX-014).
 - **FUNC-008** MUST chain fallible steps with `Bind`, `Map`, `Ensure` and `Tap`, and resolve the result with `Match` at
   the edge. In production code, MUST NOT read `IsSuccess` or `HasValue` and then `.Value` or `.Error` — that brings
   back the unchecked access that the types remove.
@@ -35,12 +35,12 @@ alwaysApply: true
 - **FUNC-010** MUST NOT use `null` or `T?` for absence in Application or Domain — the compiler does not make a caller
   handle `null`. Use `T?` only at the edge, where a framework API gives `null`, and change it into `Maybe<T>`
   immediately (`Maybe.From`). Give an optional DTO field the type `Maybe<T>`, and register one System.Text.Json
-  converter for `Maybe<T>` in the composition root (HEX-016): JSON `null` or no property ↔ `Maybe.None`, a value ↔
+  converter for `Maybe<T>` in the composition root (HEX-015): JSON `null` or no property ↔ `Maybe.None`, a value ↔
   `Maybe.From`.
 - **FUNC-011** MUST NOT use the null-forgiving operator `!` — it hides a possible `null`.
 - **FUNC-012** MUST keep Domain functions pure: the result depends only on the arguments, with no I/O, no field writes
   and no static state — pure code is testable without doubles. Application does I/O only through ports and an injected
-  `ILogger<T>` (NET-017), which, like `TimeProvider` (HEX-010), is not a port.
+  `ILogger<T>` (NET-017), which, like `TimeProvider` (HEX-009), is not a port.
 - **FUNC-013** MUST NOT change an argument or a captured variable. Return a new value.
 - **FUNC-014** MUST hold collections in immutable types (`ImmutableArray<T>`, `FrozenDictionary<TKey, TValue>`) and
   expose them as they are or as `IReadOnlyList<T>` or `IReadOnlyDictionary<TKey, TValue>`, never `List<T>` — a caller

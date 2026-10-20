@@ -72,8 +72,8 @@ The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the
 - Application exceptions vs `Result`: FUNC-003, FUNC-004 and FUNC-007 (errors are values; adapters catch only named
   infrastructure exceptions) (`reserve-stock`, `noExceptionsInApplication`).
 - `Async` suffix vs test names: NET-009 exempts test methods.
-- `IClock` vs `TimeProvider`: HEX-010 (`night-review`, `noSystemClock`, `usesTimeProvider`).
-- Outbound HTTP: HEX-011 (typed client, standard resilience handler); adapter tests: TEST-006 (WireMock.Net, no
+- `IClock` vs `TimeProvider`: HEX-009 (`night-review`, `noSystemClock`, `usesTimeProvider`).
+- Outbound HTTP: HEX-010 (typed client, standard resilience handler); adapter tests: TEST-006 (WireMock.Net, no
   mocked `HttpClient`) (`customer-name`, `reserve-stock`, `typedHttpClient`, `httpResilience`).
 - Production code as the oracle: TEST-001 (Khorikov's anti-pattern of leaking domain knowledge to tests) (`independentExpectations`).
 - `tests/` paths vs flat layout: TEST-002 (`src/<Service>.UnitTests` and `src/<Service>.IntegrationTests`).
@@ -82,7 +82,7 @@ Still open:
 
 - No task probes TEST-001's tautological-test anti-pattern since `summary-tests` was removed; `independentExpectations`
   runs on every task but nothing tempts the agent to break it.
-- HEX-013, DDD-003 to DDD-012 and TEST-005 are graded only by the judge; no deterministic check covers them.
+- HEX-012, DDD-003 to DDD-012 and TEST-005 are graded only by the judge; no deterministic check covers them.
 
 ## Compiler-enforced rules
 

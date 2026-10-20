@@ -47,5 +47,5 @@ alwaysApply: true
 - **NET-022** MUST bind configuration with `AddOptions<T>().BindConfiguration(...)`, and add
   `.ValidateDataAnnotations().ValidateOnStart()` when the options class has data annotations — bad configuration then
   fails at startup.
-- **NET-023** MUST, in the composition root (HEX-016), register stateless services as transient, configuration and
+- **NET-023** MUST, in the composition root (HEX-015), register stateless services as transient, configuration and
   telemetry as singleton, and services that use a `DbContext` as scoped.

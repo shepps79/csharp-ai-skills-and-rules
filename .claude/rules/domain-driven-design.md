@@ -7,7 +7,7 @@ alwaysApply: true
 ## Styles
 - **DDD-001** MUST apply Eric Evans' ubiquitous language, one bounded context per service, aggregates, entities, value
   objects and domain services. Do not apply context mapping, specifications, domain events, core-domain triage or
-  Evans' place for repository interfaces (see HEX-004).
+  Evans' place for repository interfaces (see HEX-003).
 - **DDD-002** MUST apply the type-driven design of Scott Wlaschin's *Domain Modeling Made Functional*: make illegal
   states unrepresentable, parse instead of validate, constrained simple types, one type for each lifecycle state.
   Do not apply its F# workflow structure (HEX-001 gives the structure).
