@@ -61,10 +61,11 @@ test('noNullForAbsence catches sync and async nullable returns', () => {
   assert.equal(passes('noNullForAbsence', { 'src/A/R.cs': 'Task<Maybe<Order>> FindAsync(Guid id);' }), true);
 });
 
-test('noThrowInDomain allows an exhaustive-switch discard arm, not a business throw', () => {
+test('noThrowInDomain allows only UnreachableException, not a business throw or unfinished work', () => {
   const domain = (code) => ({ 'src/X.Domain/Order.cs': code });
   assert.equal(passes('noThrowInDomain', domain('_ => throw new UnreachableException(),\n// never throw here')), true);
   assert.equal(passes('noThrowInDomain', domain('if (qty < 0) { throw new ArgumentOutOfRangeException(); }')), false);
+  assert.equal(passes('noThrowInDomain', domain('_ => throw new NotImplementedException(),')), false);
 });
 
 test('sealedTestClasses catches unsealed test classes with any modifiers', () => {

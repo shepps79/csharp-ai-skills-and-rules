@@ -10,8 +10,8 @@ const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
 // Files the fixture ships to make the build the gate for the compiler-enforced rules.
 const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props', 'Directory.Build.targets'];
 const REPO_SKILLS = fs.readdirSync(path.resolve(__dirname, '../../.claude/skills'));
-// The compiler (CS8524) and dotnet.md demand a throwing discard arm on exhaustive enum switches.
-const DISCARD_ARM_THROW = /(\b_\s*=>|default\s*:)\s*throw\b/g;
+// The one allowed throw marks code that can't be reached, such as an exhaustive switch's discard arm.
+const UNREACHABLE_THROW = /\bthrow\s+new\s+(?:System\.Diagnostics\.)?UnreachableException\s*\(/g;
 const SUPPRESSION = new RegExp([
   '#pragma\\s+warning\\s+disable', '#nullable\\s+disable', 'SuppressMessage', '<NoWarn>',
   '<(TreatWarningsAsErrors|EnforceCodeStyleInBuild|GenerateDocumentationFile)>\\s*false', '<Nullable>\\s*disable',
@@ -307,7 +307,7 @@ module.exports = {
 function noExceptionFlow(context, layer, pattern, problem) {
   const hits = context.metadata.changedFiles
     .filter((file) => isCSharp(file) && file.includes(`.${layer}/`))
-    .filter((file) => pattern.test(stripComments(read(context.metadata, file)).replace(DISCARD_ARM_THROW, '')));
+    .filter((file) => pattern.test(stripComments(read(context.metadata, file)).replace(UNREACHABLE_THROW, '')));
   return result(hits.length === 0, hits.length ? `${problem}: ${hits.join(', ')}` : 'ok');
 }
 
