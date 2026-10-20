@@ -46,3 +46,5 @@ alwaysApply: true
 - **TEST-011** MUST keep line coverage at 80% or more, instead of Khorikov's use of coverage only as an indicator:
   UnitTests over each layer except Infrastructure, IntegrationTests over Infrastructure — the gate of NET-003 makes
   `dotnet test` fail below it.
+- **TEST-012** MUST NOT assert on log output, instead of Khorikov's tests for support logging — a test on log
+  text breaks when the wording changes, not when the behaviour breaks.
