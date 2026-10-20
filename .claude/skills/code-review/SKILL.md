@@ -4,7 +4,7 @@ description: Review an open pull request against this repo's dotnet, hexagonal-a
 disable-model-invocation: true
 ---
 
-Review a pull request and report **blocking** findings only. Run this after `create-pr` has opened the PR for a completed ralph-loop run — it's a separate, independent pass, not part of the loop itself.
+Review a pull request and report **blocking** findings only. Run this after the PR is opened — it's a separate, independent pass.
 
 The PR number (or URL) should have been provided to you — stop here if it wasn't, and flag the user.
 
@@ -19,7 +19,7 @@ The PR number (or URL) should have been provided to you — stop here if it wasn
    - Every closed issue's acceptance criteria (fetch each via `gh issue view`) — does the diff actually satisfy all of them?
    - Correctness: bugs, unhandled edge cases, security issues
 
-3. **Run the build and tests** on the PR's branch (`gh pr checkout <pr-number>`, or the ralph-prep worktree if it's still around) with `dotnet build`, `dotnet test`. A failing build or test is always blocking.
+3. **Run the build and tests** on the PR's branch (`gh pr checkout <pr-number>`) with `dotnet build`, `dotnet test`. A failing build or test is always blocking.
 
 4. **Classify each finding**:
    - **Blocking**: correctness bug, dependency-direction/layering violation, missing or failing test for changed behavior, build warning/error, security issue, unmet acceptance criterion.
