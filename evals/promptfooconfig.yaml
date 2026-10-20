@@ -84,7 +84,9 @@ tests:
           - Infrastructure maps the Maybe to a nullable column of its row type and back, with an EF Core migration.
           - Tests: domain tests at 200 and 201 characters; endpoint unit tests through WebApplicationFactory<Program> with
             the InMemoryOrderRepository fake for a note, no note and a note that is too long; an integration test that the
-            note is stored. Expected values are literals. Names reveal intent and there is no speculative code.
+            note is stored. Expected values are literals, never taken from the production code (an id or value the test
+            arranged itself, or counted from its own responses, is fine). Names reveal intent and there is no
+            speculative code.
           Score 0-1 by the share of points satisfied.
 
   - description: get-order-endpoint (intent — absence is a NotFound result, and endpoints are tested through the real host)
@@ -156,9 +158,10 @@ tests:
           - The InMemoryOrderRepository fake finds by the customer it is given and adds no ordering or other storage
             rules. Unit tests use it, and a mock of the port appears only to force a failure. An integration test runs the
             query against the PostgreSQL container through the endpoint.
-          - Tests cover a customer with orders and one without, use literal expected values, and are named
-            Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition). Names reveal intent and
-            there is no speculative code.
+          - Tests cover a customer with orders and one without, use expected values as literals, never taken from the
+            production code (an id or value the test arranged itself, or counted from its own responses, is fine), and
+            are named Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition). Names reveal
+            intent and there is no speculative code.
           Score 0-1 by the share of points satisfied.
 
   - description: cancel-order (intent — each lifecycle state is a type, and transitions return Results)
@@ -195,8 +198,10 @@ tests:
             Value or Error. The endpoint maps failures through the existing ErrorResults.ToProblem (404 and 409), and the
             PostgreSQL adapter stores the new status and rebuilds each state through its Create.
           - Tests: domain tests for each transition; endpoint unit tests with the InMemoryOrderRepository fake for success,
-            404 and 409; an integration test against the PostgreSQL container. Expected values are literals, and names
-            follow Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
+            404 and 409; an integration test against the PostgreSQL container. Expected values are literals, never taken
+            from the production code (an id or value the test arranged itself, or counted from its own responses, is
+            fine), and names follow Method_ExpectedBehavior_Scenario (the scenario is left out when there is no
+            condition).
           Score 0-1 by the share of points satisfied.
 
   - description: reserve-stock (intent — an outbound adapter returns failures as Results; trap — tempts exceptions)
@@ -294,8 +299,9 @@ tests:
           - Exceeding the limit is a Validation failure Result, returned rather than thrown, which the existing
             ErrorResults mapping returns as 400.
           - The line-limit rule lives in Domain, free of configuration types; the limit reaches it as a plain value.
-          - Tests cover an order at the limit and one over it, with literal expected values; nothing speculative (no
-            unused options or settings).
+          - Tests cover an order at the limit and one over it, with expected values as literals, never taken from the
+            production code (an id or value the test arranged itself, or counted from its own responses, is fine);
+            nothing speculative (no unused options or settings).
           Score 0-1 by the share of points satisfied.
 
   - description: night-review (intent — time comes from TimeProvider; trap — tempts DateTime.UtcNow)
@@ -321,7 +327,9 @@ tests:
           - The use case reads the time once and passes it to the domain as a DateTimeOffset; the night-review rule lives
             in the domain as a pure function of that value.
           - Unit tests control time with FakeTimeProvider (Microsoft.Extensions.TimeProvider.Testing, versioned in
-            Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00 with literal expected values.
+            Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00 with expected values as
+            literals, never taken from the production code (an id or value the test arranged itself, or counted from
+            its own responses, is fine).
           - Names reveal intent and there is no speculative code.
           Score 0-1 by the share of points satisfied.
 
