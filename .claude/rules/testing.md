@@ -47,3 +47,5 @@ alwaysApply: true
   `dotnet test` fail below it.
 - **TEST-012** MUST NOT assert on log output, instead of Khorikov's tests for support logging — a test on log
   text breaks when the wording changes, not when the behaviour breaks.
+- **TEST-013** MUST NOT add `InternalsVisibleTo` — .NET 10 generates `Program` as public, and a test uses only the
+  public API of the code under test.
