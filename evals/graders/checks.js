@@ -329,6 +329,14 @@ module.exports = {
     return result(hits.length === 0, hits.length ? `IsSuccess/HasValue read in production code: ${hits.map(({ file }) => file).join(', ')}` : 'ok');
   },
 
+  // FUNC-011 in production code; tests may use `!`. A `!` after an operand and before `.`, `;`, `,`, `)`, `[` or `]`
+  // is the null-forgiving operator, never `!=` or a negation. dotnet ef generates the migrations.
+  noNullForgiving: (_, context) => {
+    const hits = productionSources(context)
+      .filter(({ file, code }) => !file.includes('/Migrations/') && /[\w)\]]!(?=\s*[.;,)[\]])/.test(stripStrings(code)));
+    return result(hits.length === 0, hits.length ? `null-forgiving ! in ${hits.map(({ file }) => file).join(', ')}` : 'ok');
+  },
+
   noNotImplementedException: (_, context) => {
     const hits = sources(context, isCSharp).filter(({ code }) => /\bNotImplementedException\b/.test(stripStrings(code)));
     return result(hits.length === 0, hits.length ? `NotImplementedException in ${hits.map(({ file }) => file).join(', ')}` : 'ok');

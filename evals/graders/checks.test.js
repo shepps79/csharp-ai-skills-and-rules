@@ -294,6 +294,14 @@ test('noUncheckedResultAccess fails IsSuccess and HasValue in production code on
   assert.equal(passes('noUncheckedResultAccess', { 'src/X.UnitTests/STests.cs': 'result.IsSuccess.Should().BeTrue();' }), true);
 });
 
+test('noNullForgiving fails the null-forgiving operator in production code only', () => {
+  assert.equal(passes('noNullForgiving', { 'src/X.Infrastructure/R.cs': 'return row!.Id;' }), false);
+  assert.equal(passes('noNullForgiving', { 'src/X.Infrastructure/R.cs': 'Name = default!;' }), false);
+  assert.equal(passes('noNullForgiving', { 'src/X.Api/P.cs': 'Use(options.Value.Url!, rows[0]!);' }), false);
+  assert.equal(passes('noNullForgiving', { 'src/X.Domain/O.cs': 'if (a != b && !lines.IsEmpty) { return "Hi!"; }' }), true);
+  assert.equal(passes('noNullForgiving', { 'src/X.UnitTests/STests.cs': 'await client.GetAsync($"/orders/{placed!.Id}");' }), true);
+});
+
 test('noNotImplementedException fails NotImplementedException anywhere', () => {
   assert.equal(passes('noNotImplementedException', { 'src/X.Domain/O.cs': '_ => throw new NotImplementedException(),' }), false);
   assert.equal(passes('noNotImplementedException', { 'src/X.Domain/O.cs': '_ => throw new UnreachableException(),' }), true);

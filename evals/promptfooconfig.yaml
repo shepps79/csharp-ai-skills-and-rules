@@ -39,6 +39,7 @@ defaultTest:
     - { type: javascript, value: file://graders/checks.js:mocksOnlyPorts, metric: mocks-only-ports }
     - { type: javascript, value: file://graders/checks.js:noStringErrors, metric: no-string-errors }
     - { type: javascript, value: file://graders/checks.js:noUncheckedResultAccess, metric: no-unchecked-result-access }
+    - { type: javascript, value: file://graders/checks.js:noNullForgiving, metric: no-null-forgiving }
     - { type: javascript, value: file://graders/checks.js:noNotImplementedException, metric: no-not-implemented-exception }
     - { type: javascript, value: file://graders/checks.js:logMessageTemplates, metric: log-message-templates }
     - { type: javascript, value: file://graders/checks.js:noSleepInTests, metric: no-sleep-in-tests }
