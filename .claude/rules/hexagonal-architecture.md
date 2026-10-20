@@ -12,7 +12,7 @@ alwaysApply: true
 - **HEX-002** MUST point project references only in these directions: Api → Application, Api → Infrastructure (only
   for the composition root, HEX-016), Infrastructure → Application, Application → Domain, Domain → nothing. MUST NOT
   add a reference against them — a reference that goes back means the design is wrong.
-- **HEX-003** MUST NOT reference a package from Domain, except CSharpFunctionalExtensions — the domain stays pure.
+- **HEX-003** MUST NOT reference a package from Domain that does I/O or depends on a framework — the domain stays pure.
 - **HEX-004** MUST put each outbound port, repositories included, in Application, with the name of the capability
   (`IOrderRepository`, not `IEfOrderRepository`) — ports then have one home.
 - **HEX-005** MUST write inbound ports as the public methods of a sealed `<Aggregate>Service` class in Application.
