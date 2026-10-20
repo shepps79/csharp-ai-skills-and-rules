@@ -218,6 +218,11 @@ test('preferRealCollaborators fails a mock of a port that has a fake, unless it 
   assert.equal(prefersFake('var sut = new OrderService(Mock.Of<IOrderRepository>());'), false);
 });
 
+test('fileScopedNamespaces ignores generated migrations', () => {
+  assert.equal(passes('fileScopedNamespaces', { 'src/X.Api/A.cs': 'namespace X.Api\n{\n}\n' }), false);
+  assert.equal(passes('fileScopedNamespaces', { 'src/X.Infrastructure/Migrations/1_Init.cs': 'namespace X.Migrations\n{\n}\n' }), true);
+});
+
 test('endpointTestsThroughHost requires the real host and composition root', () => {
   const config = { route: '/orders/' };
   const tests = (code, project = 'IntegrationTests') => ({ [`src/X.${project}/Api/OrderEndpointsTests.cs`]: code });

@@ -89,8 +89,10 @@ module.exports = {
   noInternalsVisibleTo: (_, context) =>
     noMatches(context, () => true, /InternalsVisibleTo/, 'InternalsVisibleTo exposes internals to tests'),
 
+  // dotnet ef generates block-scoped migrations.
   fileScopedNamespaces: (_, context) =>
-    noMatches(context, isCSharp, /^namespace\s+[\w.]+\s*(\{|$)/m, 'block-scoped namespace'),
+    noMatches(context, (file) => isCSharp(file) && !file.includes('/Migrations/'), /^namespace\s+[\w.]+\s*(\{|$)/m,
+      'block-scoped namespace'),
 
   noNullForAbsence: (_, context) =>
     noMatches(context, (file) => isCSharp(file) && !isTestFile(file),
