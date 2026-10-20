@@ -1,7 +1,7 @@
 // Runs Claude Code headless against a fresh copy of a fixture, then builds and tests the result.
 // Variants: "none" (bare model), "env" (your global setup, no repo rules),
 // "rules" (global setup + this repo's .claude/ at `rulesRef`: a git ref, or WORKTREE for uncommitted edits).
-// `excludeRules: [file.md]` drops rule files for an ablation run.
+// `excludeRules: [file.md]` drops rule files for an ablation run; `skills: [name]` keeps only those repo skills.
 const { execFileSync, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -25,9 +25,10 @@ class ClaudeCodeProvider {
   }
 
   id() {
-    const { variant, rulesRef, excludeRules = [] } = this.config;
+    const { variant, rulesRef, excludeRules = [], skills } = this.config;
     const without = excludeRules.map((file) => `-${file}`).join('');
-    return variant === 'rules' ? `claude-code:rules@${rulesRef}${without}` : `claude-code:${variant}`;
+    const only = skills ? `+skills:${skills.join(',')}` : '';
+    return variant === 'rules' ? `claude-code:rules@${rulesRef}${without}${only}` : `claude-code:${variant}`;
   }
 
   async callApi(prompt, context) {
@@ -66,7 +67,7 @@ class ClaudeCodeProvider {
   }
 }
 
-function createRunDir(fixture, { variant, rulesRef, excludeRules = [] }) {
+function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills }) {
   const runDir = path.join(RUNS_ROOT, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, 'repo');
   // Fixtures symlink shared files from templates/; copy their contents so each run dir is self-contained.
   fs.mkdirSync(runDir, { recursive: true });
@@ -74,6 +75,11 @@ function createRunDir(fixture, { variant, rulesRef, excludeRules = [] }) {
   if (variant === 'rules') {
     copyRules(rulesRef, runDir);
     excludeRules.forEach((file) => fs.rmSync(path.join(runDir, '.claude', 'rules', file)));
+    const skillsDir = path.join(runDir, '.claude', 'skills');
+    if (skills && fs.existsSync(skillsDir)) {
+      fs.readdirSync(skillsDir).filter((name) => !skills.includes(name))
+        .forEach((name) => fs.rmSync(path.join(skillsDir, name), { recursive: true }));
+    }
   }
   // Rules are committed with the fixture so the diff only shows the agent's work.
   git(runDir, 'init', '-q');

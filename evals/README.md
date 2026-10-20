@@ -56,6 +56,10 @@ same-session control), restored with `{ variant: rules, rulesRef: HEAD }`, and `
 `{ variant: rules, rulesRef: WORKTREE, excludeRules: [testing.md] }` with label `rules-testing.md`. Run each file out in
 turn against the full rules: a file whose removal changes nothing is dead weight or ignored.
 
+`config.skills` keeps only the named repo skills in a `rules` variant (`rules@WORKTREE` keeps `configuration`, the
+one skill a task grades; the others contradict the rules or have no task). Leave it out to ship every skill, or use
+`skills: []` to measure a variant without them.
+
 **Pairwise.** `pairwise.js` reuses this config with only `rules@HEAD` and `rules@WORKTREE`, and swaps each `llm-rubric`
 for a `select-best` over the same rubric, so the judge picks the better diff per task (metric `pairwise`). Judges
 favour a position, so run it in both orders and count a version as better only when it wins in both:

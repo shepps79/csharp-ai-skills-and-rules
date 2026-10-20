@@ -43,8 +43,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    loaded `configuration` and read the limit with `IConfiguration.GetValue` instead of the Options pattern, failing
    both `skillsUsed` and the judge. One run is a signal, not a result; if the baseline repeats it, the skill's
    description likely misses wording like "configurable per environment".
-5. **Skill ablation.** `excludeRules` only drops rule files; `rules@WORKTREE` copies all of `.claude/`, skills included.
-   Add an equivalent `excludeSkills` to measure what each skill adds. Until then, skill content is judged only
+5. **Skill ablation.** `rules@WORKTREE` keeps only the `configuration` skill (`config.skills`); `skills: []` measures
+   what it adds. Until that runs, skill content is judged only
    indirectly: the `order-limits` rubric grades what the configuration skill teaches, so a low score can't
    tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
 6. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture

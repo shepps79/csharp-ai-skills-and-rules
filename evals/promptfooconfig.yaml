@@ -11,9 +11,10 @@ providers:
   - id: file://providers/claude-code.js
     label: none
     config: { variant: none }
+  # Only the skills that a task grades: the others contradict the rules or have no task, and would skew the scores.
   - id: file://providers/claude-code.js
     label: rules@WORKTREE
-    config: { variant: rules, rulesRef: WORKTREE }
+    config: { variant: rules, rulesRef: WORKTREE, skills: [configuration] }
 
 evaluateOptions:
   # Each run is a full agent session plus a dotnet build; more than this starves the machine.
