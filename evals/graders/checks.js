@@ -228,13 +228,25 @@ module.exports = {
     return result(enabled, enabled ? 'ok' : 'no root Directory.Packages.props with ManagePackageVersionsCentrally');
   },
 
-  warningsAsErrors: (_, context) => {
-    const isBuildFile = (file) => file === 'Directory.Build.props' || file.endsWith('.csproj');
-    const enabled = matchingFiles(context, isBuildFile, /<TreatWarningsAsErrors>\s*true/i);
-    const projects = context.metadata.changedFiles.filter((file) => file.endsWith('.csproj'));
-    const missing = enabled.includes('Directory.Build.props') ? [] : projects.filter((file) => !enabled.includes(file));
-    return result(projects.length > 0 && missing.length === 0,
-      missing.length ? `TreatWarningsAsErrors missing: ${missing.join(', ')}` : `${projects.length} projects`);
+  // An .editorconfig only sets analyzer severities, so a new solution needs these MSBuild settings for the build to
+  // enforce anything, and a coverage gate that makes dotnet test fail below 80%.
+  buildSettings: (_, { metadata }) => {
+    const root = (file) => (fs.existsSync(path.join(metadata.runDir, file)) ? read(metadata, file) : '');
+    const props = root('Directory.Build.props');
+    const settings = {
+      TargetFramework: /<TargetFrameworks?>\s*net\d/i,
+      Nullable: /<Nullable>\s*enable\s*</i,
+      TreatWarningsAsErrors: /<TreatWarningsAsErrors>\s*true\s*</i,
+      EnforceCodeStyleInBuild: /<EnforceCodeStyleInBuild>\s*true\s*</i,
+      GenerateDocumentationFile: /<GenerateDocumentationFile>\s*true\s*</i,
+    };
+    const problems = [
+      ...Object.entries(settings).filter(([, pattern]) => !pattern.test(props))
+        .map(([name]) => `Directory.Build.props doesn't set ${name}`),
+      ...(/<Threshold>\s*(?:[89]\d|100)\s*</.test(root('Directory.Build.targets'))
+        ? [] : ['no Directory.Build.targets with a coverage Threshold of 80 or more']),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
   },
 
   // Domain references no project; Application references only Domain; a web API adapter drives Application;

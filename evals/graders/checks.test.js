@@ -250,3 +250,16 @@ test('independentExpectations fails expected values taken from production code o
   assert.equal(independent('await repository.AddAsync(order, ct);\nresult.Value.Should().BeSameAs(order);'), true);
   assert.equal(independent('response.Headers.Location.Should().Be("/orders/abc");\n_x.Setup(x => x.Ok()).Returns(true);\nok.Should().Be(true);'), true);
 });
+
+test('buildSettings requires the build-guard MSBuild settings and a coverage gate', () => {
+  const props = '<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable>'
+    + '<TreatWarningsAsErrors>true</TreatWarningsAsErrors><EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>'
+    + '<GenerateDocumentationFile>true</GenerateDocumentationFile></PropertyGroup></Project>';
+  const targets = '<Project><PropertyGroup><Threshold>80</Threshold></PropertyGroup></Project>';
+  assert.equal(passes('buildSettings', { 'Directory.Build.props': props, 'Directory.Build.targets': targets }), true);
+  assert.equal(passes('buildSettings', { 'Directory.Build.props': props }), false);
+  assert.equal(passes('buildSettings', {
+    'Directory.Build.props': props.replace('<Nullable>enable</Nullable>', ''), 'Directory.Build.targets': targets,
+  }), false);
+  assert.equal(passes('buildSettings', { 'Directory.Build.props': props, 'Directory.Build.targets': targets.replace('80', '50') }), false);
+});

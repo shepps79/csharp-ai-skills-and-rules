@@ -290,7 +290,7 @@ tests:
         Stock can never go negative, and adjusting an unknown product is an error. Include tests.
     assert:
       - { type: javascript, value: file://graders/checks.js:centralPackageManagement, metric: central-package-management }
-      - { type: javascript, value: file://graders/checks.js:warningsAsErrors, metric: warnings-as-errors }
+      - { type: javascript, value: file://graders/checks.js:buildSettings, metric: build-settings }
       - { type: javascript, value: file://graders/checks.js:layeredProjects, metric: layered-projects }
       - { type: javascript, value: file://graders/checks.js:testsUnderSrc, metric: tests-under-src }
       - { type: javascript, value: file://graders/checks.js:coverletPackages, metric: coverlet-packages }
