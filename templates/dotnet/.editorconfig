@@ -75,8 +75,11 @@ dotnet_diagnostic.IDE0290.severity = suggestion
 dotnet_diagnostic.CA2254.severity = warning
 dotnet_diagnostic.CA1727.severity = warning
 
-# --- sealed classes --------------------
+# --- sealed classes and records: CA1852 checks internal types, MA0053 public ones (Meziantou.Analyzer; every other
+# Meziantou rule is off through MeziantouAnalysisMode None). Classes with virtual members stay allowed. ---------------
 dotnet_diagnostic.CA1852.severity = warning
+dotnet_diagnostic.MA0053.severity = warning
+MA0053.public_class_should_be_sealed = true
 
 # --- implement every switch branch -------------------------------------------
 dotnet_diagnostic.IDE0010.severity = warning

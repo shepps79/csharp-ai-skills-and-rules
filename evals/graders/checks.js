@@ -213,6 +213,21 @@ module.exports = {
     return result(enabled, enabled ? 'ok' : 'no root Directory.Packages.props with ManagePackageVersionsCentrally');
   },
 
+  // The .editorconfig sets severities for these analyzers' rules, so a new solution needs the packages (AGENTS.md), and
+  // Meziantou's own defaults off, or the rules it relies on never run.
+  analyzerPackages: (_, { metadata }) => {
+    const root = (file) => (fs.existsSync(path.join(metadata.runDir, file)) ? read(metadata, file) : '');
+    const packages = root('Directory.Packages.props');
+    const problems = [
+      ...['StyleCop.Analyzers', 'Microsoft.VisualStudio.Threading.Analyzers', 'Meziantou.Analyzer']
+        .filter((name) => !new RegExp(`<GlobalPackageReference\\s+Include="${name.replaceAll('.', '\\.')}"`, 'i').test(packages))
+        .map((name) => `no GlobalPackageReference for ${name} in Directory.Packages.props`),
+      ...(/<MeziantouAnalysisMode>\s*None\s*</i.test(root('Directory.Build.props'))
+        ? [] : ['Directory.Build.props does not set MeziantouAnalysisMode to None']),
+    ];
+    return result(problems.length === 0, problems.length ? problems.join('; ') : 'ok');
+  },
+
   // An .editorconfig only sets analyzer severities, so a new solution needs these MSBuild settings for the build to
   // enforce anything, and a coverage gate that makes dotnet test fail below 80%.
   buildSettings: (_, { metadata }) => {

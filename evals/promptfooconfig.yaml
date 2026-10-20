@@ -334,6 +334,7 @@ tests:
     assert:
       - { type: javascript, value: file://graders/checks.js:centralPackageManagement, metric: central-package-management }
       - { type: javascript, value: file://graders/checks.js:buildSettings, metric: build-settings }
+      - { type: javascript, value: file://graders/checks.js:analyzerPackages, metric: analyzer-packages }
       - { type: javascript, value: file://graders/checks.js:layeredProjects, metric: layered-projects }
       - { type: javascript, value: file://graders/checks.js:testsUnderSrc, metric: tests-under-src }
       - { type: javascript, value: file://graders/checks.js:coverletPackages, metric: coverlet-packages }

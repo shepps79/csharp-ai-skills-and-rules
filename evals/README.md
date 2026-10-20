@@ -75,9 +75,11 @@ for, because agents copy what they find: Domain, Application (use-case service a
 use-case and `WebApplicationFactory` tests over the `InMemoryOrderRepository` fake) and IntegrationTests (the
 endpoints against a Testcontainers database). It follows every rule,
 so agents copy good code. Both fixtures symlink `.editorconfig` and `AGENTS.md` from `templates/dotnet/`, and `orders`
-also its `Directory.Build.props` and `Directory.Build.targets`, so the compiler-enforced rules have one source. The
-props file adds StyleCop (member ordering only) and the VS Threading analyzers (no `.Result`/`.Wait()`, no
-`async void`) as `GlobalPackageReference`s. The targets file makes `dotnet test` fail below 80% line coverage
+also its `Directory.Build.props` and `Directory.Build.targets`, so the compiler-enforced rules have one source. Its
+`Directory.Packages.props` adds StyleCop (member ordering only), the VS Threading analyzers (no `.Result`/`.Wait()`,
+no `async void`) and Meziantou (MA0053 only: sealed public types) as `GlobalPackageReference`s; it starts from
+`templates/dotnet/Directory.Packages.props`, which holds only these.
+The targets file makes `dotnet test` fail below 80% line coverage
 (coverlet.msbuild): UnitTests over every layer but Infrastructure, IntegrationTests over Infrastructure. Runs need Docker.
 
 Each run copies `fixtures/<fixture>` (symlinks resolved) to a fresh git repo under `$TMPDIR/csharp-skills-evals/`, outside this repo so its

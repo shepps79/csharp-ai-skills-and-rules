@@ -8,6 +8,10 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 - Results and errors: CSharpFunctionalExtensions.
 - Outbound HTTP resilience: `Microsoft.Extensions.Http.Resilience`.
 - Persistence: PostgreSQL with EF Core (`Npgsql.EntityFrameworkCore.PostgreSQL`) and EF Core migrations.
+- Analyzers, as `GlobalPackageReference` items in `Directory.Packages.props`: `StyleCop.Analyzers`,
+  `Microsoft.VisualStudio.Threading.Analyzers` and `Meziantou.Analyzer`, with
+  `<MeziantouAnalysisMode>None</MeziantouAnalysisMode>` in `Directory.Build.props`; `.editorconfig` turns on only the
+  analyzer rules that the project uses.
 
 ## Testing
 - xUnit v3.

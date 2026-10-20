@@ -25,7 +25,8 @@ alwaysApply: true
 - **NET-009** MUST end the name of an async method with `Async`, except a test method.
 - **NET-010** MUST order members: constants and static readonly fields, instance fields, constructors, properties,
   public methods, internal and protected methods, private methods.
-- **NET-011** MUST make a class `sealed`, unless it is designed for inheritance — the build checks only internal classes.
+- **NET-011** MUST make a class or record `sealed`, unless it is abstract, static or has virtual members — a sealed
+  type cannot be changed by a subclass that its author did not plan for.
 - **NET-012** MUST remove unused `using` directives, parameters, private members and assignments.
 - **NET-013** MUST use `nameof` instead of a string literal or `typeof(...).Name`, and a `using` directive instead of
   a fully qualified name.

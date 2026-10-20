@@ -265,6 +265,19 @@ test('centralPackageVersions fails a version outside Directory.Packages.props', 
   assert.equal(passes('centralPackageVersions', { 'src/X/X.csproj': '<Project><PackageReference Include="Moq" /></Project>' }), true);
 });
 
+test('analyzerPackages requires the three analyzers centrally and Meziantou defaults off', () => {
+  const globals = ['StyleCop.Analyzers', 'Microsoft.VisualStudio.Threading.Analyzers', 'Meziantou.Analyzer']
+    .map((name) => `<GlobalPackageReference Include="${name}" Version="1.0.0" />`).join('');
+  const packages = `<Project>${globals}</Project>`;
+  const props = '<Project><PropertyGroup><MeziantouAnalysisMode>None</MeziantouAnalysisMode></PropertyGroup></Project>';
+  assert.equal(passes('analyzerPackages', { 'Directory.Packages.props': packages, 'Directory.Build.props': props }), true);
+  assert.equal(passes('analyzerPackages', { 'Directory.Packages.props': packages }), false);
+  assert.equal(passes('analyzerPackages', {
+    'Directory.Packages.props': packages.replace('Meziantou.Analyzer', 'Other'), 'Directory.Build.props': props,
+  }), false);
+  assert.equal(passes('analyzerPackages', { 'Directory.Build.props': `<Project>${globals}${props}</Project>` }), false);
+});
+
 test('noStringErrors fails string errors, not Result<T, Error> or UnitResult<Error>', () => {
   const service = (code) => ({ 'src/X.Application/S.cs': code });
   assert.equal(passes('noStringErrors', service('public Task<Result<OrderSummary>> PlaceAsync(R r);')), false);
