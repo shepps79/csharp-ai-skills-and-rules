@@ -10,7 +10,6 @@ const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
 const stripStrings = (code) => code.replace(/"""[\s\S]*?"""|[$@]*"(?:[^"\\]|\\.)*"/g, '""');
 // Files the fixture ships to make the build the gate for the compiler-enforced rules.
 const BUILD_GUARDS = ['.editorconfig', 'Directory.Build.props', 'Directory.Build.targets'];
-const REPO_SKILLS = fs.readdirSync(path.resolve(__dirname, '../../.claude/skills'));
 // The one allowed throw marks code that can't be reached, such as an exhaustive switch's discard arm.
 const UNREACHABLE_THROW = /\bthrow\s+new\s+(?:System\.Diagnostics\.)?UnreachableException\s*\(/g;
 const SUPPRESSION = new RegExp([
@@ -211,12 +210,6 @@ module.exports = {
   skillsUsed: (_, { metadata, config }) => {
     const missing = config.skills.filter((skill) => !metadata.agent.skillsUsed.includes(skill));
     return result(missing.length === 0, missing.length ? `skill not loaded: ${missing.join(', ')}` : 'ok');
-  },
-
-  // A task no repo skill covers; loading one anyway costs context and can steer the agent off course.
-  noSkillsUsed: (_, { metadata }) => {
-    const used = [...new Set(metadata.agent.skillsUsed.filter((skill) => REPO_SKILLS.includes(skill)))];
-    return result(used.length === 0, used.length ? `unneeded skill loaded: ${used.join(', ')}` : 'ok');
   },
 
   centralPackageManagement: (_, context) => {

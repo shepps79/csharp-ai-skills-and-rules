@@ -126,15 +126,18 @@ the report exits 1 when the evals it prints have more than one.
   of them for a tests-only change; it needs coverlet.msbuild, and the provider runs `dotnet test
   -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura`, so the tests check also fails below the fixture's
   coverage gate. On greenfield, `coverletPackages` also requires every new test project to reference coverlet.collector
-  and coverlet.msbuild, versioned in `Directory.Packages.props`. `skillsUsed`/`noSkillsUsed` grade the repo skills the agent loaded.
+  and coverlet.msbuild, versioned in `Directory.Packages.props`. `skillsUsed` grades the repo skills the agent loaded.
   `npm test` runs the graders' own tests; run it after changing a check.
 - `acceptance/`: hidden tests the agent never sees. After the agent's diff, build and coverage are taken, the provider
   copies `acceptance/<fixture>/` and `acceptance/<vars.acceptance>/` over the run dir and runs `dotnet test` on each
   project in them. `acceptance/orders` holds NetArchTest architecture tests (layer dependencies, sealed classes);
-  the task suites (`order-limits`, `customer-name`, `get-order-endpoint`) test the HTTP contract through the real host
+  the task suites (`delivery-note`, `get-order-endpoint`, `customer-orders`, `cancel-order`, `customer-name`,
+  `order-limits`) test the HTTP contract through the real host
   (`OrdersApi`) against a PostgreSQL container migrated with the agent's migrations.
 - `llm-rubric`: a local `claude -p` judge (`providers/judge.js`) with no tools, plugins, hooks or CLAUDE.md.
   The rubric text in `promptfooconfig.yaml` is the yardstick, so don't edit it in the same change as the rules.
+  The judge never sees the rules, so each rubric point names the code it expects, including where the rules depart
+  from the books they cite (e.g. the same invariant check in each state's `Create` is not duplication).
 
 Single runs are noisy. Use `--repeat 5` or more, and treat differences smaller than about 15 points as noise.
 

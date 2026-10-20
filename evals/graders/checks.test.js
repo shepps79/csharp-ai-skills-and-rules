@@ -115,12 +115,10 @@ test('testCancellationToken catches default and new tokens', () => {
   assert.equal(passes('testCancellationToken', tests('await sut.PlaceAsync(request, TestContext.Current.CancellationToken);')), true);
 });
 
-test('skill checks grade the repo skills the agent loaded', () => {
+test('skillsUsed grades the repo skills the agent loaded', () => {
   const loaded = (...skills) => ({ agent: { skillsUsed: skills } });
   assert.equal(passes('skillsUsed', {}, loaded('ponytail:ponytail'), { skills: ['opentelemetry'] }), false);
   assert.equal(passes('skillsUsed', {}, loaded('opentelemetry', 'aspire'), { skills: ['opentelemetry'] }), true);
-  assert.equal(passes('noSkillsUsed', {}, loaded('ef-core')), false);
-  assert.equal(passes('noSkillsUsed', {}, loaded('ponytail:ponytail')), true);
 });
 
 test('coverage scores changed production files, or everything for a tests-only change', () => {

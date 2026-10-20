@@ -7,16 +7,18 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 ## Current state
 
 - Agent: `claude-sonnet-5-5`. Judge: `claude-opus-5-5`, told to treat the graded diff as untrusted data.
-- Two fixtures (`fixtures/orders`, `fixtures/empty`) and twelve tasks: `find-order` (null trap), `place-order-tests`
-  (mocks vs TestContainers conflict), `summary-tests` (tautological-test trap, planted mutants), `cancel-order` (realistic feature), `get-order-mocked` (testing.md's `(Order?)null`
-  mock vs `Maybe`), `reserve-stock` (adapter errors as exceptions vs Results), `order-limits` (configuration skill,
-  hidden HTTP acceptance tests), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the
-  rules should lead to `TimeProvider`), `customer-name` (typed `HttpClient`, hidden HTTP acceptance tests),
-  `get-order-endpoint` (test wiring through the real host, real collaborators over mocks), `greenfield-inventory`
-  (new service).
-- 37 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
+- Two fixtures (`fixtures/orders`, `fixtures/empty`) and ten tasks, each with one intent in its description:
+  `delivery-note` (an optional value is a `Maybe`; `string?` trap), `get-order-endpoint` (absence is `NotFound`;
+  endpoint tests through the real host), `customer-orders` (a sequence stays on the railway; fakes find by key),
+  `cancel-order` (a type per lifecycle state), `reserve-stock` (adapter failures as Results; exception trap),
+  `customer-name` (typed `HttpClient` tested against a stub server), `order-limits` (Options pattern; configuration
+  skill), `add-telemetry` (opentelemetry skill), `night-review` (`DateTime.UtcNow` trap: the rules should lead to
+  `TimeProvider`), `greenfield-inventory` (new service). Each task that changes storage states an HTTP contract, so
+  TEST-007's endpoint tests can cover the adapter and the TEST-011 gate can pass.
+- 41 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
-  contract tests for `order-limits`, `customer-name` and `get-order-endpoint`. The `customer-name` tests stub every `IHttpClientFactory`
+  contract tests for every task whose text fixes one: `delivery-note`, `get-order-endpoint`, `customer-orders`,
+  `cancel-order`, `customer-name` and `order-limits`. The `customer-name` tests stub every `IHttpClientFactory`
   client's primary handler, so code that creates its own `HttpClient` fails them.
 - Coverage: the `orders` test projects reference coverlet.collector and coverlet.msbuild; the `coverage` check scores
   the line coverage of the production files the agent changed.
@@ -25,17 +27,16 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 - In the first baseline, all rule files together cost ~21.8k tokens per session.
 - `rules@HEAD` is removed while the rules are being reworked; compare `rules@WORKTREE` against the baseline eval.
   `env` (global setup, no repo rules) is removed too; restore it with `{ variant: env }` when needed.
-- The checks, judge prompt, fixture analyzers and tasks changed on 2026-10-15; results graded before then, including
-  baseline `eval-PHZ-2026-10-15T12:05:05`, aren't comparable.
+- The tasks, rubrics, checks and judge prompt changed on 2026-10-20 to match the rewritten rules; results graded
+  before then aren't comparable.
 
 ## Next steps, in order
 
-1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 12 tasks × 2 variants × 5 = 120 agent
-   runs; at the last baseline's cost per run, roughly $23 and 1–1.5 hours at concurrency 2.
+1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 10 tasks × 2 variants × 5 = 100 agent
+   runs; at the last baseline's cost per run, roughly $19 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
 3. **More skill-triggering tasks.** `order-limits` (configuration) and `add-telemetry` (opentelemetry) grade on
-   `skillsUsed`; `find-order` and `place-order-tests` grade on `noSkillsUsed`. Still missing: `ef-core` (needs a
-   database adapter in `orders`), `fast-endpoints`, `dependency-injection` and `aspire`. The workflow skills
+   `skillsUsed`. Still missing: `ef-core`, `fast-endpoints` and `dependency-injection`. The workflow skills
    (`commit`, `code-review`, `create-pr`, `ralph-prep`, `write-spec`, `write-tickets`, `writing-great-skills`)
    have no tasks either. `none` has no repo skills, so it fails `skillsUsed` by design.
 4. **Check the configuration skill's trigger.** In the one `order-limits` smoke run (`rules@WORKTREE`), the agent never
@@ -46,9 +47,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    Add an equivalent `excludeSkills` to measure what each skill adds. Until then, skill content is judged only
    indirectly: the `order-limits` and `add-telemetry` rubrics grade what those skills teach, so a low score can't
    tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
-6. **More hidden acceptance tests.** Only `order-limits`, `customer-name` and `get-order-endpoint` fix a contract in their task text. `find-order`,
-   `cancel-order` and `get-order-mocked` leave method names to the agent, so they can't have contract tests without
-   changing their task text, which changes the yardstick.
+6. **More hidden acceptance tests.** `reserve-stock`, `add-telemetry` and `night-review` have only the architecture
+   tests: their contracts (a warehouse stub, telemetry, a summary field) need a fixed contract in the task text first.
 7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
    rules settle and run `eval-pairwise` in both orders.
 8. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
@@ -56,8 +56,8 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
    `httpTestDoubles` check for `customer-name` and `reserve-stock` that fails tests which mock `HttpClient` (its
    `GetAsync` family isn't virtual, so the setup never intercepts) or `IHttpClientFactory` (only needed by code calling
    `CreateClient`, which `typedHttpClient` already fails), or that call a real `http(s)://` host. It should pass port
-   mocks (`Mock<ICustomerDirectory>`) for service tests and a stubbed `HttpMessageHandler` (hand-written, or
-   `Moq.Protected` on `SendAsync`) for adapter tests.
+   fakes and mocks for service tests, and a stub HTTP server (e.g. WireMock.Net) for adapter tests (TEST-006 forbids a
+   mocked `HttpMessageHandler`).
 
 ## Rule problems the evals now surface
 
@@ -66,28 +66,23 @@ The 2026-10-16 rule rewrite (to `rule-standard.md`) settles these, each with the
 - Unit tests with TestContainers vs Moq, and mock-first vs real collaborators: TEST-001 (Khorikov's classical school)
   and TEST-004 and TEST-005 (in-memory fakes without storage rules, Moq only for a port without a fake or for a failure
   path). Measured by
-  `place-order-tests`, `preferRealCollaborators` and `endpointTestsThroughHost`.
+  `get-order-endpoint`, `customer-orders`, `preferRealCollaborators` and `endpointTestsThroughHost`.
 - `(Order?)null` in test examples: FUNC-006 and FUNC-010 (`Result<Maybe<T>, Error>` from lookups, no `null` inside)
-  (`get-order-mocked`, `noNullInTests`).
+  (`delivery-note`, `get-order-endpoint`, `noNullInTests`).
 - Application exceptions vs `Result`: FUNC-003, FUNC-004 and FUNC-007 (errors are values; adapters catch only named
   infrastructure exceptions) (`reserve-stock`, `noExceptionsInApplication`).
 - `Async` suffix vs test names: NET-009 exempts test methods.
 - `IClock` vs `TimeProvider`: HEX-010 (`night-review`, `noSystemClock`, `usesTimeProvider`).
 - Outbound HTTP: HEX-011 (typed client, standard resilience handler); adapter tests: TEST-006 (WireMock.Net, no
   mocked `HttpClient`) (`customer-name`, `reserve-stock`, `typedHttpClient`, `httpResilience`).
-- Production code as the oracle: TEST-001 (Khorikov's anti-pattern of leaking domain knowledge to tests) (`independentExpectations`,
-  `killsPlantedMutants`).
+- Production code as the oracle: TEST-001 (Khorikov's anti-pattern of leaking domain knowledge to tests) (`independentExpectations`).
 - `tests/` paths vs flat layout: TEST-002 (`src/<Service>.UnitTests` and `src/<Service>.IntegrationTests`).
 
 Still open:
 
-- `place-order-tests` can't apply "real collaborators first": `InMemoryOrderRepository` has only `AddAsync`, so a test
-  can't observe through it that the order was persisted, short of adding a speculative lookup. Its rubric still accepts
-  Moq or the in-memory adapter. Giving the fixture's adapter a lookup would change every `orders` task, so it waits for
-  a deliberate yardstick change.
-- The rewrite adds stances no check grades yet: `ErrorKind` mapped to ProblemDetails (HEX-013), state-per-type with
-  `Match` (DDD-008 to DDD-010), constrained types (DDD-003, DDD-004), fakes without storage rules (TEST-005). Review the
-  rubrics against them in a separate commit before the next baseline.
+- No task probes TEST-001's tautological-test anti-pattern since `summary-tests` was removed; `independentExpectations`
+  runs on every task but nothing tempts the agent to break it.
+- HEX-013, DDD-003 to DDD-012 and TEST-005 are graded only by the judge; no deterministic check covers them.
 
 ## Compiler-enforced rules
 

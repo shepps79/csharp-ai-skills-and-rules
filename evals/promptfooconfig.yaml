@@ -47,98 +47,165 @@ defaultTest:
     - { type: javascript, value: file://graders/checks.js:noLogicInTests, metric: no-logic-in-tests }
     - { type: javascript, value: file://graders/checks.js:independentExpectations, metric: independent-expectations }
 
-# The rubrics are the fixed yardstick: they must not change when the rules under test change.
+# The rubrics are the fixed yardstick: they must not change when the rules under test change. Each point names the
+# code it expects, including where the rules depart from the books they cite, because the judge never sees the rules.
+# Each task states its HTTP contract, so its storage changes can be covered through endpoint tests.
 tests:
-  - description: find-order (trap — tempts a nullable return)
+  - description: delivery-note (intent — an optional value is a Maybe end to end; trap — tempts string?)
     vars:
+      acceptance: delivery-note
       task: |
-        Callers of `OrderService` need to look up a single order by its id. An order with that id might not exist.
-        Add this capability end to end (application port, PostgreSQL adapter, service method) with tests.
+        Customers may add an optional delivery note to an order. `POST /orders` accepts `deliveryNote`, at most 200
+        characters, and the created order returns it as `deliveryNote`, or `null` when the customer gave none. A note
+        over 200 characters is rejected with 400 Bad Request. Store the note with the order. Add tests.
     assert:
       # Hidden tests (acceptance/orders, plus acceptance/<vars.acceptance>) exist for orders tasks only.
       - &acceptance { type: javascript, value: file://graders/checks.js:acceptance, metric: acceptance, weight: 3 }
-      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
-      - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
+      - &noNullForAbsence { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - &noNullInTests { type: javascript, value: file://graders/checks.js:noNullInTests, metric: no-null-in-tests }
+      - &usesMaybe { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
-      - { type: javascript, value: file://graders/checks.js:noSkillsUsed, metric: no-skills-used }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
+          Pass only if all of these hold:
+          - The note is a constrained domain type (a sealed record with a private constructor and a static Create that
+            returns Result<T, Error>) that rejects more than 200 characters as a Validation error. The order holds it as
+            Maybe<that type>; no string?, null or empty string stands for "no note" in Domain or Application.
+          - The use case parses the request's note into the domain type once, before it calls the domain. The request
+            and response DTOs carry the note as Maybe<string>, serialized by the fixture's MaybeJsonConverterFactory, so a
+            missing or null JSON value reads as None and None writes as null. The 400 comes from the existing ErrorResults
+            mapping of the Validation error.
+          - Infrastructure maps the Maybe to a nullable column of its row type and back, with an EF Core migration.
+          - Tests: domain tests at 200 and 201 characters; endpoint unit tests through WebApplicationFactory<Program> with
+            the InMemoryOrderRepository fake for a note, no note and a note that is too long; an integration test that the
+            note is stored. Expected values are literals. Names reveal intent and there is no speculative code.
+          Score 0-1 by the share of points satisfied.
+
+  - description: get-order-endpoint (intent — absence is a NotFound result, and endpoints are tested through the real host)
+    vars:
+      acceptance: get-order-endpoint
+      task: |
+        Clients need to fetch a single order over HTTP: `GET /orders/{id}` returns the order in the same shape as
+        `POST /orders` does, or 404 Not Found when there is no such order. Add tests.
+    assert:
+      - *acceptance
       # The task adds a lookup, so the in-memory fake is observable and can replace a mock.
       - &preferInMemoryRepository
         type: javascript
         value: file://graders/checks.js:preferRealCollaborators
         metric: prefer-real-collaborators
         config: { prefer: { IOrderRepository: InMemoryOrderRepository } }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
-          Pass only if all of these hold:
-          - Absence is modelled explicitly with Maybe<Order> (CSharpFunctionalExtensions), not a nullable return.
-          - The lookup is added to the IOrderRepository port, implemented in the PostgreSQL adapter and the in-memory fake,
-            and exposed by OrderService.
-          - Tests cover both the found and not-found cases through public APIs only.
-          - Names reveal intent, there is no speculative code, and async methods take and pass a CancellationToken.
-          Score 0-1 by the share of points satisfied.
-
-  - description: cancel-order (realistic feature)
-    vars:
-      task: |
-        Customers need to be able to cancel an order through `OrderService`, identified by order id.
-        Pending and confirmed orders can be cancelled; cancelling an order that is already cancelled is an error,
-        and so is cancelling an order that doesn't exist. Implement this with unit tests.
-    assert:
-      - *acceptance
-      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
-      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
-      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
-      - *preferInMemoryRepository
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
-          Pass only if all of these hold:
-          - The cancellation rule lives in the Order aggregate and returns a Result rather than throwing.
-          - OrderService loads the order through the repository port, treats a missing order as a failure Result, and composes steps without null checks.
-          - Tests cover pending, confirmed, already-cancelled and missing-order cases.
-          - Names reveal intent, there is no speculative code or duplication, and members follow the usual C# ordering.
-          Score 0-1 by the share of points satisfied.
-
-  - description: get-order-mocked (conflict — testing.md's (Order?)null mock vs Maybe)
-    vars:
-      task: |
-        Callers of `OrderService` need the summary of an order by its id, and need to know when there is no such order.
-        Add the repository lookup and the service method, and unit-test the service with Moq against the repository port,
-        including the not-found case.
-    assert:
-      - *acceptance
-      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
-      - { type: javascript, value: file://graders/checks.js:noNullInTests, metric: no-null-in-tests }
-      - { type: javascript, value: file://graders/checks.js:usesMaybe, metric: uses-maybe }
+      - { type: javascript, value: file://graders/checks.js:endpointTestsThroughHost, metric: endpoint-tests-through-host, config: { route: '/orders/' } }
+      - *noNullForAbsence
+      - *noNullInTests
+      - *usesMaybe
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
       - type: llm-rubric
         metric: judge
         weight: 3
         value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters, with Moq unit tests.
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
-          - Absence is a Maybe (CSharpFunctionalExtensions) from the port through the service; nothing returns or passes null.
-          - The tests mock only IOrderRepository and stub the not-found case with Maybe.None, not a null; they assert on the
-            Maybe or Result the service returns, not with BeNull().
-          - Tests cover found and not-found, are named Method_ExpectedBehavior_Scenario, and pass TestContext.Current.CancellationToken.
-          - Names reveal intent and there is no speculative code.
+          - The repository port's lookup returns Task<Result<Maybe<Order>, Error>>. OrderService turns None into
+            Error.NotFound and returns Result<OrderSummary, Error>, never a Maybe. The endpoint resolves the result with
+            Match and maps failures through the existing ErrorResults.ToProblem, so the 404 comes from NotFound. No null
+            or T? in Domain or Application.
+          - Endpoint tests use WebApplicationFactory<Program> and the real composition root: in UnitTests only the
+            repository port is replaced, by the InMemoryOrderRepository fake registered as a singleton in
+            ConfigureTestServices; in IntegrationTests nothing is replaced and the PostgreSQL adapter runs against a local
+            container.
+          - Tests use the InMemoryOrderRepository fake and real Order objects; a mock of the port appears only to force a
+            failure, such as Unavailable to 503.
+          - Tests cover found and not-found, assert the status code and the typed body, contain no logic, use literal
+            expected values, AwesomeAssertions and TestContext.Current.CancellationToken, and are named
+            Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
 
-  - description: reserve-stock (conflict — translate adapter errors to an exception or a Result)
+  - description: customer-orders (intent — a sequence stays on the railway; fakes find by the key they take)
+    vars:
+      acceptance: customer-orders
+      task: |
+        Clients need to list a customer's orders: `GET /customers/{customerId}/orders` returns the customer's orders,
+        each in the same shape as `POST /orders` returns an order, or an empty list when the customer has none. Add tests.
+    assert:
+      - *acceptance
+      - *preferInMemoryRepository
+      - { type: javascript, value: file://graders/checks.js:endpointTestsThroughHost, metric: endpoint-tests-through-host, config: { route: '/customers/' } }
+      - *noNullForAbsence
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
+          Pass only if all of these hold:
+          - The repository port gains a lookup by customer that returns Task<Result<ImmutableArray<Order>, Error>>, and
+            OrderService returns Result<ImmutableArray<OrderSummary>, Error> (or IReadOnlyList). No IAsyncEnumerable,
+            List<T> or null on the port or the use case, and an empty list is a success, not NotFound.
+          - The use case parses the route's customer id into CustomerId before it calls the port, and the endpoint maps
+            failures through the existing ErrorResults.ToProblem.
+          - The InMemoryOrderRepository fake finds by the customer it is given and adds no ordering or other storage
+            rules. Unit tests use it, and a mock of the port appears only to force a failure. An integration test runs the
+            query against the PostgreSQL container through the endpoint.
+          - Tests cover a customer with orders and one without, use literal expected values, and are named
+            Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition). Names reveal intent and
+            there is no speculative code.
+          Score 0-1 by the share of points satisfied.
+
+  - description: cancel-order (intent — each lifecycle state is a type, and transitions return Results)
+    vars:
+      acceptance: cancel-order
+      task: |
+        Customers need to cancel an order: `POST /orders/{id}/cancellation` cancels it and returns the order, in the same
+        shape as `POST /orders` does, with status `Cancelled`. Pending and confirmed orders can be cancelled. Cancelling
+        an order that is already cancelled returns 409 Conflict, and an unknown order returns 404 Not Found. Add tests.
+    assert:
+      - *acceptance
+      - *noNullForAbsence
+      - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
+      - *preferInMemoryRepository
+      - { type: javascript, value: file://graders/checks.js:endpointTestsThroughHost, metric: endpoint-tests-through-host, config: { route: '/cancellation' } }
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
+          Pass only if all of these hold:
+          - Cancelled is its own state: a sealed CancelledOrder record that derives from Order, with no status field, and
+            it is added to Order.Match. Cancel exists only on PendingOrder and ConfirmedOrder and returns
+            Result<CancelledOrder, Error>, so cancelling a cancelled order does not compile. Each state has its own static
+            Create that checks that state's invariants; the same check repeated in each state's Create is expected, not
+            duplication.
+          - Code that accepts any state uses Order.Match, either on the aggregate or in the use case, and answers an
+            already cancelled order with a Conflict error. Nothing throws for it, and no switch or `is` on state types
+            appears outside Match.
+          - OrderService is one railway: parse the id, look the order up through the port (Result<Maybe<Order>, Error>),
+            turn None into NotFound, cancel, save through the port. No null checks and no reads of IsSuccess, HasValue,
+            Value or Error. The endpoint maps failures through the existing ErrorResults.ToProblem (404 and 409), and the
+            PostgreSQL adapter stores the new status and rebuilds each state through its Create.
+          - Tests: domain tests for each transition; endpoint unit tests with the InMemoryOrderRepository fake for success,
+            404 and 409; an integration test against the PostgreSQL container. Expected values are literals, and names
+            follow Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
+          Score 0-1 by the share of points satisfied.
+
+  - description: reserve-stock (intent — an outbound adapter returns failures as Results; trap — tempts exceptions)
     vars:
       task: |
         Placing an order must now reserve stock with the warehouse service: `POST /reservations` on the base URL in
         configuration (`Warehouse:BaseUrl`), sending the order id and its lines. If the warehouse is unreachable or
         returns a non-success status, the order can't be placed and must not be stored. Add the outbound HTTP adapter
-        and unit tests for `OrderService`.
+        and tests.
     assert:
       - *acceptance
-      - { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
+      - &noExceptionsInApplication { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
       - &typedHttpClient { type: javascript, value: file://graders/checks.js:typedHttpClient, metric: typed-http-client }
       - &httpResilience { type: javascript, value: file://graders/checks.js:httpResilience, metric: http-resilience }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
@@ -147,17 +214,62 @@ tests:
         metric: judge
         weight: 3
         value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
-          - A capability-named outbound port in Application (e.g. IStockReservations) returns a Result; the HttpClient adapter
-            in Infrastructure turns HTTP failures and HttpRequestException into a failure Result, so no exception crosses the port.
-          - OrderService composes the reservation into PlaceOrderAsync with Bind/Check-style steps, with no try/catch, and
-            stores the order only after a successful reservation.
-          - The adapter is registered in the composition root with a typed HttpClient whose base address comes from configuration.
-          - Unit tests fake the port and cover a successful reservation and a failed one (order not stored).
+          - A capability-named outbound port in Application (e.g. IStockReservations) returns UnitResult<Error> or
+            Result<T, Error>. The Infrastructure adapter catches only named exceptions (HttpRequestException,
+            TimeoutRejectedException, BrokenCircuitException), never Exception, and lets OperationCanceledException go. It
+            returns Unavailable for an unreachable warehouse, a timeout or a 5xx, and Validation or Conflict for a 4xx.
+          - OrderService composes the reservation into PlaceOrderAsync with Bind-style steps, with no try/catch, and
+            stores the order only after a successful reservation. The endpoint maps the failure through the existing
+            ErrorResults.ToProblem.
+          - The adapter is registered in the composition root as a typed client with AddHttpClient and
+            AddStandardResilienceHandler, its base address from configuration.
+          - Tests: OrderService and endpoint unit tests replace the port with an in-memory fake in Fakes/ named
+            InMemory<port name without I>, and show that a failed reservation leaves the order unstored. The adapter is
+            tested in IntegrationTests against a stub HTTP server (e.g. WireMock.Net) for success, a 4xx, a 5xx and a
+            timeout; HttpClient, HttpMessageHandler and IHttpClientFactory are not mocked.
           Score 0-1 by the share of points satisfied.
 
-  - description: order-limits (skill — configuration; hidden acceptance tests)
+  - description: customer-name (intent — a typed HttpClient adapter, tested against a stub server; hidden acceptance tests)
+    vars:
+      acceptance: customer-name
+      task: |
+        The order returned by `POST /orders` must include the customer's display name as `customerName`, fetched from
+        the customer service: `GET /customers/{customerId}` on the base URL in configuration (`Customers:BaseUrl`),
+        which returns JSON like `{ "name": "Ada Lovelace" }`. If the customer service returns 404 Not Found, reject the
+        order with 400 Bad Request. Add tests.
+    assert:
+      - *acceptance
+      - *typedHttpClient
+      - *httpResilience
+      - *noExceptionsInApplication
+      - *usesMaybe
+      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
+      - type: llm-rubric
+        metric: judge
+        weight: 3
+        value: |
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
+          Pass only if all of these hold:
+          - A capability-named outbound port in Application (e.g. ICustomerDirectory) is implemented by an Infrastructure
+            adapter that takes HttpClient in its constructor, registered once as a typed client with AddHttpClient in the
+            composition root, base address from configuration. No `new HttpClient`, no IHttpClientFactory.CreateClient,
+            no second registration of the adapter, and no HttpClient held in a singleton.
+          - The client has AddStandardResilienceHandler (Microsoft.Extensions.Http.Resilience, versioned in
+            Directory.Packages.props); responses are disposed and the CancellationToken flows into every HTTP call.
+          - The port returns Result<Maybe<T>, Error>: the adapter turns a 404 into None, and a 5xx or timeout into
+            Unavailable, catching only named exceptions. The use case turns None into a Validation error, which the
+            existing ErrorResults mapping returns as 400. No HTTP exception crosses the port.
+          - Tests: the adapter is tested in IntegrationTests against a stub HTTP server (e.g. WireMock.Net) for success,
+            404, 5xx and timeout, without mocking HttpClient, HttpMessageHandler or IHttpClientFactory. OrderService and
+            endpoint unit tests replace the port with an in-memory fake in Fakes/ named InMemory<port name without I>.
+            No test calls a real network.
+          Score 0-1 by the share of points satisfied.
+
+  - description: order-limits (intent — configuration bound with the Options pattern; skill — configuration; hidden acceptance tests)
     vars:
       acceptance: order-limits
       task: |
@@ -172,20 +284,23 @@ tests:
         metric: judge
         weight: 3
         value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
-          - The limit is bound with the Options pattern from appsettings, with a default of 50, and validated at startup
-            (ValidateDataAnnotations or Validate, plus ValidateOnStart).
-          - Exceeding the limit is a Result failure, returned rather than thrown, which the endpoint maps to 400.
+          - The limit is an options class bound with AddOptions<T>().BindConfiguration(...) from appsettings, with a default
+            of 50, and validated at startup (ValidateDataAnnotations or Validate, plus ValidateOnStart).
+          - Exceeding the limit is a Validation failure Result, returned rather than thrown, which the existing
+            ErrorResults mapping returns as 400.
           - Domain stays free of configuration types; the limit reaches the rule as a plain value.
-          - Tests cover an order at the limit and one over it; nothing speculative (no unused options or settings).
+          - Tests cover an order at the limit and one over it, with literal expected values; nothing speculative (no
+            unused options or settings).
           Score 0-1 by the share of points satisfied.
 
-  - description: add-telemetry (skill — opentelemetry)
+  - description: add-telemetry (intent — tracing and metrics with built-in System.Diagnostics; skill — opentelemetry)
     vars:
       task: |
         Operators need to see how long placing an order takes and how many orders are placed or rejected.
-        Add tracing and metrics for placing an order, exported over OTLP.
+        Add tracing and metrics for placing an order, exported over OTLP. Add tests.
     assert:
       - *acceptance
       - { type: javascript, value: file://graders/checks.js:skillsUsed, metric: skills-used, config: { skills: [opentelemetry] } }
@@ -193,21 +308,24 @@ tests:
         metric: judge
         weight: 3
         value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
           - Placing an order starts an Activity from a named ActivitySource and records placed and rejected counts with
             instruments created through IMeterFactory, tagged by outcome rather than encoded in instrument names.
           - Application uses only System.Diagnostics types; the OpenTelemetry SDK and the OTLP exporter are configured in the
             composition root, with the endpoint left to the standard OTEL_* settings rather than hard-coded.
           - The new packages are added to Directory.Packages.props only.
-          - Names reveal intent and there is no speculative telemetry (no instruments nothing records).
+          - Tests observe the recorded activity and measurements (e.g. ActivityListener, MeterListener or
+            MetricCollector<T>) for a placed and a rejected order. Names reveal intent and there is no speculative
+            telemetry (no instruments nothing records).
           Score 0-1 by the share of points satisfied.
 
-  - description: night-review (trap — tempts DateTime.UtcNow over TimeProvider)
+  - description: night-review (intent — time comes from TimeProvider; trap — tempts DateTime.UtcNow)
     vars:
       task: |
         Callers of `OrderService` need to know when each order was placed, in UTC. Orders placed at night, from 22:00
-        up to but not including 06:00 UTC, must be flagged for manual review in the order summary. Add unit tests that
+        up to but not including 06:00 UTC, must be flagged for manual review in the order summary. Add tests that
         cover the boundaries.
     assert:
       - *acceptance
@@ -218,83 +336,26 @@ tests:
         metric: judge
         weight: 3
         value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
+          The output is a git diff of a C# .NET 10 change to an orders service with Domain, Application, Infrastructure
+          and Api projects (ports and adapters, CSharpFunctionalExtensions).
           Pass only if all of these hold:
           - The current time comes from the built-in System.TimeProvider, injected into the use case and registered
             (TimeProvider.System) in the composition root; no DateTime.UtcNow/Now and no custom IClock-style interface.
-          - The use case reads the time once and passes it to the domain as a value; the night-review rule lives in the
-            domain as a pure function of that value.
+          - The use case reads the time once and passes it to the domain as a DateTimeOffset; the night-review rule lives
+            in the domain as a pure function of that value.
           - Unit tests control time with FakeTimeProvider (Microsoft.Extensions.TimeProvider.Testing, versioned in
-            Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00.
+            Directory.Packages.props) or fixed values, and cover 21:59, 22:00, 05:59 and 06:00 with literal expected values.
           - Names reveal intent and there is no speculative code.
           Score 0-1 by the share of points satisfied.
 
-  - description: customer-name (HttpClient — typed client from IHttpClientFactory; hidden acceptance tests)
-    vars:
-      acceptance: customer-name
-      task: |
-        The order returned by `POST /orders` must include the customer's display name as `customerName`, fetched from
-        the customer service: `GET /customers/{customerId}` on the base URL in configuration (`Customers:BaseUrl`),
-        which returns JSON like `{ "name": "Ada Lovelace" }`. If the customer service returns 404 Not Found, reject the
-        order with 400 Bad Request. Add tests.
-    assert:
-      - *acceptance
-      - *typedHttpClient
-      - *httpResilience
-      - { type: javascript, value: file://graders/checks.js:noExceptionsInApplication, metric: no-exceptions-in-application }
-      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
-          Pass only if all of these hold:
-          - A capability-named outbound port in Application (e.g. ICustomerDirectory) is implemented by an Infrastructure
-            adapter that takes HttpClient in its constructor, registered once as a typed client with
-            AddHttpClient<TPort, TAdapter> in the composition root, base address from configuration. No `new HttpClient`,
-            no IHttpClientFactory.CreateClient, no second registration of the adapter, and no HttpClient held in a singleton.
-          - The client has AddStandardResilienceHandler (Microsoft.Extensions.Http.Resilience, versioned in
-            Directory.Packages.props); responses are disposed and the CancellationToken flows into every HTTP call.
-          - A 404 becomes a failure Result that the endpoint maps to 400; no HTTP exception crosses the port.
-          - Tests stub the HTTP boundary (an HttpMessageHandler, or the port faked for the service), and the existing
-            endpoint tests are updated so no test calls a real network.
-          Score 0-1 by the share of points satisfied.
-
-  - description: get-order-endpoint (wiring — tests through the real host; prefer real collaborators over mocks)
-    vars:
-      acceptance: get-order-endpoint
-      task: |
-        Clients need to fetch a single order over HTTP: `GET /orders/{id}` returns the order in the same shape as
-        `POST /orders` does, or 404 Not Found when there is no such order. Add tests.
-    assert:
-      - *acceptance
-      - *preferInMemoryRepository
-      - { type: javascript, value: file://graders/checks.js:endpointTestsThroughHost, metric: endpoint-tests-through-host, config: { route: '/orders/' } }
-      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
-      - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
-      - type: llm-rubric
-        metric: judge
-        weight: 3
-        value: |
-          The output is a git diff of a C# .NET 10 change to an orders service using ports and adapters.
-          Pass only if all of these hold:
-          - Absence is a Maybe from the repository port through OrderService, and the endpoint maps None to 404.
-          - Endpoint tests use WebApplicationFactory<Program> and the real composition root: in UnitTests with only the
-            repository port replaced by the InMemoryOrderRepository fake, in IntegrationTests with nothing replaced and
-            the PostgreSQL adapter against a local container.
-          - Unit tests use the InMemoryOrderRepository fake and real Order objects rather than Moq; a mock appears only
-            where nothing real can stand in.
-          - Tests cover found and not-found, contain no logic, are named Method_ExpectedBehavior_Scenario, use
-            AwesomeAssertions and pass TestContext.Current.CancellationToken.
-          Score 0-1 by the share of points satisfied.
-
-  - description: greenfield-inventory (new service from an empty repo)
+  - description: greenfield-inventory (intent — a new service set up the way the rules ask)
     vars:
       fixture: empty
       task: |
         This repository is empty. Create a new .NET 10 inventory service, with the solution file at the repository root.
-        Clients register products (SKU and name) and adjust their stock level up or down over HTTP.
-        Stock can never go negative, and adjusting an unknown product is an error. Include tests.
+        Clients register products (SKU and name) and adjust their stock level up or down over HTTP, and the service
+        stores them in PostgreSQL. Stock can never go negative, and adjusting an unknown product is an error.
+        Include tests.
     assert:
       - { type: javascript, value: file://graders/checks.js:centralPackageManagement, metric: central-package-management }
       - { type: javascript, value: file://graders/checks.js:buildSettings, metric: build-settings }
@@ -302,7 +363,7 @@ tests:
       - { type: javascript, value: file://graders/checks.js:testsUnderSrc, metric: tests-under-src }
       - { type: javascript, value: file://graders/checks.js:coverletPackages, metric: coverlet-packages }
       - { type: javascript, value: file://graders/checks.js:functionalLibrary, metric: functional-library }
-      - { type: javascript, value: file://graders/checks.js:noNullForAbsence, metric: no-null-for-absence }
+      - *noNullForAbsence
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added }
       - type: llm-rubric
@@ -311,12 +372,20 @@ tests:
         value: |
           The output is a git diff creating a new C# .NET 10 inventory service from an empty repository.
           Pass only if all of these hold:
-          - Ports and adapters: Domain has no framework or infrastructure dependencies; Application defines the ports;
-            Infrastructure and the HTTP API are adapters; project references point inwards only.
-          - Business rules (no negative stock, unknown product) live in the domain and are returned as Result failures,
-            not thrown; absence uses Maybe<T>, not null.
-          - Solution hygiene: central package management, warnings as errors, nullable enabled, file-scoped namespaces,
-            sealed classes, and nothing speculative (no unused abstractions, layers or config).
-          - Tests: unit tests for the domain rules and integration tests for the HTTP endpoints, using xUnit v3 and
-            AwesomeAssertions, named Method_ExpectedBehavior_Scenario.
+          - Ports and adapters: Domain, Application, Infrastructure and Api projects. Domain references no framework or
+            infrastructure package; Application defines the ports; the Api's composition root binds adapters to ports in
+            extension members on IHostApplicationBuilder; project references point inwards (Api may reference
+            Infrastructure only for the composition root).
+          - Business rules: SKU, name and stock level are constrained types with a static Create returning Result<T, Error>.
+            No negative stock is a domain rule returned as a Validation or Conflict Result, not thrown. An unknown product
+            is absence: the repository lookup returns Result<Maybe<T>, Error> and the use case turns None into NotFound.
+            Failures map to ProblemDetails in one place (400, 404, 409, 503), and the endpoints are minimal APIs.
+          - Solution hygiene: a Directory.Build.props that sets TargetFramework, Nullable, TreatWarningsAsErrors,
+            EnforceCodeStyleInBuild and GenerateDocumentationFile; a Directory.Build.targets that fails dotnet test below
+            80% line coverage; central package management; file-scoped namespaces outside generated migrations; sealed
+            classes, test classes included; nothing speculative (no unused packages, abstractions or settings).
+          - Tests: src/Inventory.UnitTests (Domain, Application, Api, Fakes) and src/Inventory.IntegrationTests
+            (Infrastructure, Api). Endpoint tests use WebApplicationFactory<Program>: unit tests with an in-memory fake of
+            the repository, integration tests against a PostgreSQL container. xUnit v3, AwesomeAssertions, literal
+            expected values, names Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
