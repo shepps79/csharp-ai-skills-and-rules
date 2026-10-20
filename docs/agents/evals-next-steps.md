@@ -11,10 +11,10 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
   `delivery-note` (an optional value is a `Maybe`; `string?` trap), `get-order-endpoint` (absence is `NotFound`;
   endpoint tests through the real host), `customer-orders` (a sequence stays on the railway; fakes find by key),
   `cancel-order` (a type per lifecycle state), `reserve-stock` (adapter failures as Results; exception trap),
-  `customer-name` (typed `HttpClient` tested against a stub server), `order-limits` (Options pattern; configuration
-  skill), `night-review` (`DateTime.UtcNow` trap: the rules should lead to
-  `TimeProvider`), `greenfield-inventory` (new service). Each task that changes storage states an HTTP contract, so
-  TEST-007's endpoint tests can cover the adapter and the TEST-011 gate can pass.
+  `customer-name` (typed `HttpClient` tested against a stub server), `order-limits` (Options pattern), `night-review`
+  (`DateTime.UtcNow` trap: the rules should lead to `TimeProvider`), `greenfield-inventory` (new service). Each task
+  that changes storage states an HTTP contract, so TEST-007's endpoint tests can cover the adapter and the TEST-011
+  gate can pass.
 - 41 deterministic checks in `evals/graders/checks.js` (with their own tests, `npm test`), plus one `llm-rubric` per task.
 - Hidden acceptance tests in `evals/acceptance/`: NetArchTest architecture tests on every `orders` task, and an HTTP
   contract tests for every task whose text fixes one: `delivery-note`, `get-order-endpoint`, `customer-orders`,
@@ -35,23 +35,15 @@ checks, hidden acceptance tests and a local `claude -p` judge. Everything stays 
 1. **Re-record the baseline**: `npm run eval-baseline -- --repeat 5`. That is 9 tasks × 2 variants × 5 = 90 agent
    runs; at the last baseline's cost per run, roughly $17 and 1–1.5 hours at concurrency 2.
 2. **Run the ablation**: one `rules@WORKTREE` provider per rule file with `excludeRules: [<file>]`, `--repeat 5`.
-3. **More skill-triggering tasks.** `order-limits` (configuration) grades on
-   `skillsUsed`. Still missing: `ef-core`, `fast-endpoints` and `dependency-injection`. The workflow skills
-   (`commit`, `code-review`, `write-spec`, `write-tickets`, `writing-great-skills`)
-   have no tasks either. `none` has no repo skills, so it fails `skillsUsed` by design.
-4. **Check the configuration skill's trigger.** In the one `order-limits` smoke run (`rules@WORKTREE`), the agent never
-   loaded `configuration` and read the limit with `IConfiguration.GetValue` instead of the Options pattern, failing
-   both `skillsUsed` and the judge. One run is a signal, not a result; if the baseline repeats it, the skill's
-   description likely misses wording like "configurable per environment".
-5. **Skill ablation.** `rules@WORKTREE` keeps only the `configuration` skill (`config.skills`); `skills: []` measures
-   what it adds. Until that runs, skill content is judged only
-   indirectly: the `order-limits` rubric grades what the configuration skill teaches, so a low score can't
-   tell a skill that wasn't loaded from one that gave poor guidance (read `skillsUsed` alongside the judge score).
-6. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture
+3. **Skill-triggering tasks.** No task grades a skill: the `configuration` skill was removed, as the model and NET-022
+   already cover it (an `order-limits` run wrote the Options pattern without loading it). When a skill in
+   `.claude/wip/` is ready, add a task that grades it with `skillsUsed`, add it to `config.skills`, and run with and
+   without it to measure what it adds.
+4. **More hidden acceptance tests.** `reserve-stock` and `night-review` have only the architecture
    tests: their contracts (a warehouse stub, a summary field) need a fixed contract in the task text first.
-7. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
+5. **Pairwise at scale.** `select-best` was checked against the judge on a toy pair only. Restore `rules@HEAD` once the
    rules settle and run `eval-pairwise` in both orders.
-8. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
+6. **Grade how agents test HTTP clients.** Nothing deterministic does yet: the `customer-name` acceptance tests exercise
    the agent's production code, not its tests, and only one judge-rubric line covers the tests. Add an
    `httpTestDoubles` check for `customer-name` and `reserve-stock` that fails tests which mock `HttpClient` (its
    `GetAsync` family isn't virtual, so the setup never intercepts) or `IHttpClientFactory` (only needed by code calling

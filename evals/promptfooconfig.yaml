@@ -11,10 +11,10 @@ providers:
   - id: file://providers/claude-code.js
     label: none
     config: { variant: none }
-  # Only the skills that a task grades: the others contradict the rules or have no task, and would skew the scores.
+  # No repo skills: the ones in .claude/skills are workflow skills that no task grades, and would skew the scores.
   - id: file://providers/claude-code.js
     label: rules@WORKTREE
-    config: { variant: rules, rulesRef: WORKTREE, skills: [configuration] }
+    config: { variant: rules, rulesRef: WORKTREE, skills: [] }
 
 evaluateOptions:
   # Each run is a full agent session plus a dotnet build; more than this starves the machine.
@@ -270,7 +270,7 @@ tests:
             No test calls a real network.
           Score 0-1 by the share of points satisfied.
 
-  - description: order-limits (intent — configuration bound with the Options pattern; skill — configuration; hidden acceptance tests)
+  - description: order-limits (intent — configuration bound with the Options pattern; hidden acceptance tests)
     vars:
       acceptance: order-limits
       task: |
@@ -278,7 +278,6 @@ tests:
         `POST /orders` must reject an order over the limit with 400 Bad Request. Add tests.
     assert:
       - *acceptance
-      - { type: javascript, value: file://graders/checks.js:skillsUsed, metric: skills-used, config: { skills: [configuration] } }
       - { type: javascript, value: file://graders/checks.js:noThrowInDomain, metric: no-throw-in-domain }
       - { type: javascript, value: file://graders/checks.js:testsAdded, metric: tests-added, config: { minimum: 2 } }
       - type: llm-rubric
