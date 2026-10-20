@@ -131,16 +131,15 @@ test('acceptance fails when the hidden tests fail and when the build failed', ()
   assert.equal(passes('acceptance', {}, dotnet({ acceptance: { ok: true, passed: 5, failed: 0, log: '' } })), true);
 });
 
-test('coverletPackages requires both packages in every test project, versioned centrally', () => {
+test('coverletPackages requires coverlet.msbuild in every test project, versioned centrally', () => {
   const project = (packages) => `<Project><PackageReference Include="xunit.v3" />${packages}</Project>`;
-  const both = '<PackageReference Include="coverlet.collector" /><PackageReference Include="coverlet.msbuild" />';
-  const props = { 'Directory.Packages.props': '<PackageVersion Include="coverlet.collector" Version="10.1.0" />'
-    + '<PackageVersion Include="coverlet.msbuild" Version="10.1.0" />' };
-  assert.equal(passes('coverletPackages', { ...props, 'src/X.UnitTests/X.UnitTests.csproj': project(both) }), true);
+  const msbuild = '<PackageReference Include="coverlet.msbuild" />';
+  const props = { 'Directory.Packages.props': '<PackageVersion Include="coverlet.msbuild" Version="10.1.0" />' };
+  assert.equal(passes('coverletPackages', { ...props, 'src/X.UnitTests/X.UnitTests.csproj': project(msbuild) }), true);
   assert.equal(passes('coverletPackages', {
     ...props, 'src/X.UnitTests/X.UnitTests.csproj': project('<PackageReference Include="coverlet.collector" />'),
   }), false);
-  assert.equal(passes('coverletPackages', { 'src/X.UnitTests/X.UnitTests.csproj': project(both) }), false);
+  assert.equal(passes('coverletPackages', { 'src/X.UnitTests/X.UnitTests.csproj': project(msbuild) }), false);
   assert.equal(passes('coverletPackages', { ...props, 'src/X.Domain/X.Domain.csproj': '<Project />' }), false);
 });
 

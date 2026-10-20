@@ -42,7 +42,7 @@ module.exports = {
     const minimum = config?.minimum ?? 0.8;
     const files = metadata.dotnet.coverage;
     if (!files) {
-      return result(false, 'no coverage report: the test projects need coverlet.collector');
+      return result(false, 'no coverage report: the test projects need coverlet.msbuild');
     }
     const changed = Object.keys(files).filter((file) => metadata.changedFiles.includes(file));
     const scope = changed.length ? changed : Object.keys(files);
@@ -265,10 +265,10 @@ module.exports = {
     return result(outside.length === 0, outside.length ? `projects outside src/: ${outside.join(', ')}` : 'ok');
   },
 
-  // No rule names coverlet, but the harness needs both packages, versioned centrally, in every test project to measure
-  // the coverage gate.
+  // No rule names coverlet, but the harness needs coverlet.msbuild, versioned centrally, in every test project to
+  // measure the coverage gate (it runs dotnet test -p:CollectCoverage=true). coverlet.collector is not needed.
   coverletPackages: (_, { metadata }) => {
-    const packages = ['coverlet.collector', 'coverlet.msbuild'];
+    const packages = ['coverlet.msbuild'];
     const references = (content, item) => packages.filter((name) => new RegExp(`<${item}\\s+Include="${name}"`, 'i').test(content));
     const testProjects = metadata.changedFiles.filter((file) => file.endsWith('.csproj'))
       .filter((file) => /Microsoft\.NET\.Test\.Sdk|xunit/i.test(read(metadata, file)));

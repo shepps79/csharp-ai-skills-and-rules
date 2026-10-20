@@ -16,8 +16,7 @@ MUST, MUST NOT, SHOULD and SHOULD NOT are used as in RFC 2119 and RFC 8174.
 - Testcontainers for databases, WireMock.Net for HTTP APIs.
 - `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) for time.
 - `WebApplicationFactory` (`Microsoft.AspNetCore.Mvc.Testing`) for endpoints.
-- Coverage: `coverlet.collector` and `coverlet.msbuild`. `Directory.Build.targets` makes `dotnet test` fail below 80%
-  line coverage.
+- Coverage: `coverlet.msbuild`. `Directory.Build.targets` makes `dotnet test` fail below 80% line coverage.
 
 ## Runbook
 Run from the repository root, where the solution file is.
