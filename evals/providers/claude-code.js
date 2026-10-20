@@ -265,7 +265,8 @@ function hashTree(target) {
     return fs.existsSync(target) ? sha(fs.readFileSync(target)).slice(0, 12) : 'missing';
   }
   const files = fs.readdirSync(target, { recursive: true })
-    .filter((file) => !file.split(path.sep).includes('.git') && fs.statSync(path.join(target, file), { throwIfNoEntry: false })?.isFile())
+    // Claude Code writes a `.in_use/<pid>` lock into each plugin it loads.
+    .filter((file) => !file.split(path.sep).some((part) => part === '.git' || part === '.in_use') && fs.statSync(path.join(target, file), { throwIfNoEntry: false })?.isFile())
     .sort();
   return sha(files.map((file) => `${file}:${sha(fs.readFileSync(path.join(target, file)))}`).join('\n')).slice(0, 12);
 }
