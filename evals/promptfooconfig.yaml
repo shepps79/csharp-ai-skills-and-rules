@@ -123,9 +123,9 @@ tests:
             container.
           - Tests use the InMemoryOrderRepository fake and real Order objects; a mock of the port appears only to force a
             failure, such as Unavailable to 503.
-          - Tests cover found and not-found, assert the status code and the typed body, contain no logic, use expected
-            values as literals, never taken from the production code (a value counted from the test's own responses is
-            fine), AwesomeAssertions and TestContext.Current.CancellationToken, and are named
+          - Tests cover found and not-found, assert the status code and the typed body of the success response, contain
+            no logic, use expected values as literals, never taken from the production code (a value counted from the
+            test's own responses is fine), AwesomeAssertions and TestContext.Current.CancellationToken, and are named
             Method_ExpectedBehavior_Scenario (the scenario is left out when there is no condition).
           Score 0-1 by the share of points satisfied.
 
