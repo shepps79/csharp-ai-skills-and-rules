@@ -2,6 +2,7 @@
 // Variants: "none" (bare model), "env" (your global setup, no repo rules),
 // "rules" (global setup + this repo's .claude/ at `rulesRef`: a git ref, or WORKTREE for uncommitted edits).
 // `excludeRules: [file.md]` drops rule files for an ablation run; `skills: [name]` keeps only those repo skills.
+// `env: {...}` adds environment variables to the agent, e.g. ANTHROPIC_BASE_URL for a local model server.
 const { execFileSync, spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -102,14 +103,14 @@ function copyRules(rulesRef, runDir) {
   execFileSync('tar', ['-x', '-C', runDir], { input: archive });
 }
 
-function runAgent(prompt, runDir, { variant, model, effort }) {
+function runAgent(prompt, runDir, { variant, model, effort, env: extraEnv }) {
   const args = ['-p', prompt, '--model', model, '--effort', effort, '--permission-mode', 'auto',
     '--output-format', 'stream-json', '--verbose'];
   // EVAL_KEEP_SESSIONS=1 keeps each session, so `npm run eval-session` can resume it and ask the agent about its choices.
   if (process.env.EVAL_KEEP_SESSIONS !== '1') {
     args.push('--no-session-persistence');
   }
-  const env = { ...process.env };
+  const env = { ...process.env, ...extraEnv };
   if (variant === 'none') {
     args.push('--setting-sources', '', '--strict-mcp-config');
     env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = '1';
