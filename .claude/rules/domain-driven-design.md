@@ -10,7 +10,7 @@ alwaysApply: true
   Evans' place for repository interfaces (see HEX-003).
 - **DDD-002** MUST apply the type-driven design of Scott Wlaschin's *Domain Modeling Made Functional*: make illegal
   states unrepresentable, parse instead of validate, constrained simple types, one type for each lifecycle state.
-  Do not apply its F# workflow structure (HEX-001 gives the structure).
+  MUST NOT apply its F# workflow structure (HEX-001 and HEX-002 give the structure).
 
 ## Rules
 - **DDD-003** MUST model a domain value that has a rule (an id, a quantity, an email, money) as a constrained type, not

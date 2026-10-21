@@ -5,8 +5,8 @@ alwaysApply: true
 # Hexagonal architecture
 
 ## Styles
-- **HEX-001** MUST apply Alistair Cockburn's hexagonal architecture (ports and adapters) with four projects for each
-  service: Domain, Application, Infrastructure and an Api project for Presentation.
+- **HEX-001** MUST apply Alistair Cockburn's hexagonal architecture (ports and adapters). An inbound port is his
+  primary (driving) port, and an outbound port is his secondary (driven) port.
 
 ## Rules
 - **HEX-002** MUST point project references only in these directions: Api → Application, Api → Infrastructure (only
