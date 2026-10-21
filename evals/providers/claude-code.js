@@ -43,7 +43,7 @@ class ClaudeCodeProvider {
   }
 
   async callApi(prompt, context) {
-    const runDir = createRunDir(context.vars.fixture, this.config, (dir) => this.placeRules(dir));
+    const runDir = createRunDir(context.vars.fixture, this.config);
     // The transcript holds neither the task nor the eval, so transcripts.js reads them from here.
     fs.writeFileSync(path.join(runDir, '..', 'run.json'), JSON.stringify({
       evalId: context.evaluationId,
@@ -76,9 +76,6 @@ class ClaudeCodeProvider {
     };
   }
 
-  // Claude Code reads the rules where copyRules puts them.
-  placeRules() {}
-
   async runAgent(prompt, runDir) {
     const events = await runClaude(prompt, runDir, this.config);
     const result = events.find((e) => e.type === 'result') ?? {};
@@ -92,7 +89,7 @@ class ClaudeCodeProvider {
   }
 }
 
-function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills }, placeRules) {
+function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills }) {
   const runDir = path.join(RUNS_ROOT, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, 'repo');
   // Fixtures symlink shared files from templates/; copy their contents so each run dir is self-contained.
   fs.mkdirSync(runDir, { recursive: true });
@@ -105,7 +102,6 @@ function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills },
       fs.readdirSync(skillsDir).filter((name) => !skills.includes(name))
         .forEach((name) => fs.rmSync(path.join(skillsDir, name), { recursive: true }));
     }
-    placeRules(runDir);
   }
   // Rules are committed with the fixture so the diff only shows the agent's work.
   git(runDir, 'init', '-q');

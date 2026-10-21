@@ -1,10 +1,7 @@
 // Runs omp or pi (`config.harness`) headless in place of Claude Code; the run dir, build, tests and grading are the
 // Claude Code provider's. Both CLIs print the same JSON events. Only the "env" and "rules" variants: neither CLI
 // has a switch that turns off all of your global setup, which "none" needs.
-// omp reads always-apply rules from .omp/rules, not .claude/rules. pi reads no rules, so they go in the system
-// prompt, as pi-rules does with always-apply rules.
-const fs = require('node:fs');
-const path = require('node:path');
+// The rules load through each CLI's own setup (pi-rules in pi), as they would for a user.
 const ClaudeCodeProvider = require('./claude-code.js');
 
 const { spawnAgent, commandVersion, sha } = ClaudeCodeProvider;
@@ -22,16 +19,12 @@ class PiProvider extends ClaudeCodeProvider {
     return this.config.harness;
   }
 
-  placeRules(runDir) {
-    if (this.harness === 'omp') {
-      fs.mkdirSync(path.join(runDir, '.omp'));
-      fs.renameSync(path.join(runDir, '.claude', 'rules'), path.join(runDir, '.omp', 'rules'));
-    }
-  }
-
   async runAgent(prompt, runDir) {
     const { model, effort, env } = this.config;
-    const args = ['-p', '--mode', 'json', '--model', model, '--thinking', effort, ...this.harnessArgs(runDir)];
+    const args = ['-p', '--mode', 'json', '--model', model, '--thinking', effort];
+    if (this.harness === 'omp') {
+      args.push('--auto-approve', '--no-title');
+    }
     if (process.env.EVAL_KEEP_SESSIONS !== '1') {
       args.push('--no-session');
     }
@@ -57,30 +50,12 @@ class PiProvider extends ClaudeCodeProvider {
     };
   }
 
-  harnessArgs(runDir) {
-    if (this.harness === 'omp') {
-      return ['--auto-approve', '--no-title'];
-    }
-    const rulesDir = path.join(runDir, '.claude', 'rules');
-    const rules = fs.existsSync(rulesDir) ? fs.readdirSync(rulesDir).filter((file) => file.endsWith('.md')).sort() : [];
-    return rules.flatMap((file) => ['--append-system-prompt', alwaysApplyBody(path.join(rulesDir, file))]);
-  }
-
   // Your global omp or pi setup is not hashed, unlike Claude Code's; keep it unchanged between runs you compare.
   fingerprint() {
     const { model, effort } = this.config;
     const parts = { [this.harness]: commandVersion(this.harness), model, effort, dotnet: commandVersion('dotnet') };
     return { hash: sha(JSON.stringify(parts)).slice(0, 12), ...parts };
   }
-}
-
-function alwaysApplyBody(file) {
-  const [, frontmatter = '', body] = fs.readFileSync(file, 'utf8').match(/^(?:---\n([\s\S]*?)\n---\n)?([\s\S]*)$/);
-  if (!/^alwaysApply:\s*true\s*$/m.test(frontmatter)) {
-    // shortcut: a `paths:` rule would load on every file; load it with pi-rules once a rule uses `paths:`.
-    throw new Error(`${file} is not alwaysApply: true, and pi.js puts every rule in the system prompt`);
-  }
-  return body.trim();
 }
 
 module.exports = PiProvider;

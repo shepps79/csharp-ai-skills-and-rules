@@ -78,10 +78,10 @@ first, then `LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` de
 runs one task at a time.
 
 **omp and pi.** `harness.js` runs `rules@WORKTREE` with omp or pi (`providers/pi.js`) on the same model, through
-your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge stays on Claude. omp reads
-rules only from `.omp/rules`, so the provider moves them there; pi reads no rules, so the provider appends each
-always-apply rule to its system prompt, as pi-rules does. Their first request is smaller than Claude Code's
-(system prompt, tools and injected context, with the same rules and `AGENTS.md`, measured 2026-10-21):
+your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge stays on Claude. The
+provider leaves the rules in `.claude/rules`: each CLI must load them through its own setup, e.g. pi-rules in pi.
+Their first request is smaller than Claude Code's (system prompt, tools and injected context, with all rules and
+`AGENTS.md` loaded, measured 2026-10-21):
 Claude Code ≈ 110k characters, omp ≈ 63k, pi ≈ 42k, of which the rules are ≈ 31k. `eval-session` resumes only
 Claude Code sessions.
 
