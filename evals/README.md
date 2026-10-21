@@ -78,7 +78,8 @@ first, then `LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` de
 runs one task at a time.
 
 **omp and pi.** `harness.js` runs `rules@WORKTREE` with omp or pi (`providers/pi.js`) on the same model, through
-your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge stays on Claude. The
+your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge runs through the same CLI
+and login, on the same Claude judge model. The
 provider leaves the rules in `.claude/rules`: each CLI must load them through its own setup, e.g. pi-rules in pi.
 Their first request is smaller than Claude Code's (system prompt, tools and injected context, with all rules and
 `AGENTS.md` loaded, measured 2026-10-21):

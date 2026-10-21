@@ -1,5 +1,5 @@
-// Runs the working-tree rules with omp or pi (EVAL_HARNESS) in place of Claude Code. The judge stays on Claude,
-// so scores compare with the Claude Code runs.
+// Runs the working-tree rules with omp or pi (EVAL_HARNESS) in place of Claude Code. The judge runs through the same
+// CLI and login, still on the Claude judge model, so scores compare with the Claude Code runs.
 const fs = require('node:fs');
 const path = require('node:path');
 const yaml = require('js-yaml');
@@ -11,6 +11,10 @@ const { skills } = base.providers.find((provider) => provider.config.variant ===
 module.exports = {
   ...base,
   description: harness,
+  defaultTest: {
+    ...base.defaultTest,
+    options: { ...base.defaultTest.options, provider: { id: base.defaultTest.options.provider, config: { harness } } },
+  },
   providers: [{
     id: 'file://providers/pi.js',
     label: `${harness}:rules@WORKTREE`,
