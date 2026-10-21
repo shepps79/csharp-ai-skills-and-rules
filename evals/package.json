@@ -7,6 +7,8 @@
     "eval-baseline": "npm run promptfoo -- eval --no-cache --no-share --description baseline",
     "eval-pairwise": "npm run promptfoo -- eval --no-cache --no-share -c pairwise.js",
     "eval-lmstudio": "npm run promptfoo -- eval --no-cache --no-share -c lmstudio.js",
+    "eval-omp": "EVAL_HARNESS=omp npm run promptfoo -- eval --no-cache --no-share -c harness.js",
+    "eval-pi": "EVAL_HARNESS=pi npm run promptfoo -- eval --no-cache --no-share -c harness.js",
     "view": "npm run promptfoo -- view --yes",
     "eval-session": "node session.js",
     "report": "node report.js",

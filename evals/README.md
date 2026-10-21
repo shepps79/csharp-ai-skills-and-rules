@@ -21,6 +21,8 @@ npm run eval-baseline -- --repeat 5                          # every variant, in
 npm run eval-pairwise                                        # judge picks rules@HEAD or rules@WORKTREE per task
 PAIRWISE_SWAP=1 npm run eval-pairwise                        # the same with the order swapped
 LMSTUDIO_MODEL=qwen/qwen3-coder-30b npm run eval-lmstudio    # working-tree rules on a local LM Studio model
+npm run eval-omp                                             # working-tree rules with omp instead of Claude Code
+npm run eval-pi                                              # working-tree rules with pi instead of Claude Code
 npm run view                                                 # local results UI
 npm run clean                                                # delete ALL results and run dirs and kept sessions, baseline included
 EVAL_KEEP_SESSIONS=1 npm run eval -- --filter-pattern cancel-order   # keep the agent sessions to resume
@@ -71,6 +73,14 @@ favour a position, so run it in both orders and count a version as better only w
 Anthropic-compatible API; the judge stays on Claude. Start the server and load a model with a large context window
 first, then `LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` defaults to `http://localhost:1234`). It
 runs one task at a time.
+
+**omp and pi.** `harness.js` runs `rules@WORKTREE` with omp or pi (`providers/pi.js`) on the same model, through
+your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge stays on Claude. omp reads
+rules only from `.omp/rules`, so the provider moves them there; pi reads no rules, so the provider appends each
+always-apply rule to its system prompt, as pi-rules does. Their first request is smaller than Claude Code's
+(system prompt, tools and injected context, with the same rules and `AGENTS.md`, measured 2026-10-21):
+Claude Code ≈ 110k characters, omp ≈ 63k, pi ≈ 42k, of which the rules are ≈ 31k. `eval-session` and the
+transcripts page read only Claude Code sessions.
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`, both at `medium` effort; override per provider with `config.model` and `config.effort`.
 
