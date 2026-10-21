@@ -5,13 +5,18 @@ alwaysApply: true
 # Clean code
 
 ## Styles
-- **CLEAN-001** MUST apply Robert C. Martin's *Clean Code* chapters on meaningful names, functions and formatting.
-  Do not apply its chapters on comments, error handling, classes and unit tests, or its Law of Demeter.
+- **CLEAN-001** MUST apply only chapter 2 *Meaningful Names*, chapter 3 *Functions* and chapter 5 *Formatting* of
+  Robert C. Martin's *Clean Code* (1st edition, 2008). MUST NOT apply its other chapters, chapter 17 *Smells and
+  Heuristics* included. MUST NOT apply these sections of the selected chapters: member prefixes and unadorned
+  interface names (NET-008); exceptions instead of error codes, its try/catch sections and its command that returns no
+  status (FUNC-003); switch statements (CS14-007, DDD-010); Don't Repeat Yourself (DESIGN-008); the vertical ordering
+  of dependent functions (NET-010).
 
 ## Rules
 - **CLEAN-002** MUST keep a function at 20 lines or fewer — a longer function usually does more than one thing.
 - **CLEAN-003** MUST give a function 5 parameters or fewer, not counting a `CancellationToken`, unless it is a `Match`
-  (DDD-010). Use a parameter `record` for more — a long parameter list hides which values belong together.
+  (DDD-010), instead of Martin's limit of three. Use a parameter `record` for more — a long parameter list hides which
+  values belong together.
 - **CLEAN-004** MUST NOT nest blocks more than 3 levels deep. Use a guard clause or extract a method — deep nesting
   hides the main path.
 - **CLEAN-005** MUST write an XML documentation comment on each public type and member in production projects (the
