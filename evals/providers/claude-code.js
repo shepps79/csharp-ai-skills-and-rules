@@ -29,11 +29,15 @@ class ClaudeCodeProvider {
     const { variant, rulesRef, excludeRules = [], skills } = this.config;
     const without = excludeRules.map((file) => `-${file}`).join('');
     const only = skills ? `+skills:${skills.join(',')}` : '';
-    return variant === 'rules' ? `claude-code:rules@${rulesRef}${without}${only}` : `claude-code:${variant}`;
+    return variant === 'rules' ? `${this.harness}:rules@${rulesRef}${without}${only}` : `${this.harness}:${variant}`;
+  }
+
+  get harness() {
+    return 'claude-code';
   }
 
   async callApi(prompt, context) {
-    const runDir = createRunDir(context.vars.fixture, this.config);
+    const runDir = createRunDir(context.vars.fixture, this.config, (dir) => this.placeRules(dir));
     // The transcript holds neither the task nor the eval, so transcripts.js reads them from here.
     fs.writeFileSync(path.join(runDir, '..', 'run.json'), JSON.stringify({
       evalId: context.evaluationId,
@@ -43,11 +47,10 @@ class ClaudeCodeProvider {
       provider: this.label ?? this.id(),
       fixture: context.vars.fixture,
     }, null, 2));
-    const events = await runAgent(prompt, runDir, this.config);
-    const result = events.find((e) => e.type === 'result') ?? {};
-    if (result.is_error) {
+    const run = await this.runAgent(prompt, runDir);
+    if (run.error) {
       // An agent that never ran (e.g. not logged in) is an ERROR, not a quality FAIL.
-      return { error: `agent failed in ${runDir}: ${result.result}` };
+      return { error: `agent failed in ${runDir}: ${run.error}` };
     }
     const changedFiles = stageAndListChanges(runDir);
     const diff = git(runDir, 'diff', '--cached', 'HEAD');
@@ -55,20 +58,35 @@ class ClaudeCodeProvider {
     return {
       // Fenced so the results UI's "Render markdown" setting shows it as a highlighted diff.
       output: diff ? `\`\`\`diff\n${diff}\n\`\`\`` : '(no changes)',
-      cost: result.total_cost_usd,
-      tokenUsage: tokenUsage(result.usage),
+      cost: run.cost,
+      tokenUsage: run.tokenUsage,
       metadata: {
         runDir,
         changedFiles,
         dotnet: buildAndTest(runDir, context.vars),
-        agent: summariseTranscript(events, result),
-        fingerprint: fingerprint(events, this.config),
+        agent: run.agent,
+        fingerprint: run.fingerprint,
       },
+    };
+  }
+
+  // Claude Code reads the rules where copyRules puts them.
+  placeRules() {}
+
+  async runAgent(prompt, runDir) {
+    const events = await runClaude(prompt, runDir, this.config);
+    const result = events.find((e) => e.type === 'result') ?? {};
+    return {
+      error: result.is_error ? result.result : undefined,
+      cost: result.total_cost_usd,
+      tokenUsage: tokenUsage(result.usage),
+      agent: summariseTranscript(events, result),
+      fingerprint: fingerprint(events, this.config),
     };
   }
 }
 
-function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills }) {
+function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills }, placeRules) {
   const runDir = path.join(RUNS_ROOT, `${Date.now()}-${crypto.randomBytes(3).toString('hex')}`, 'repo');
   // Fixtures symlink shared files from templates/; copy their contents so each run dir is self-contained.
   fs.mkdirSync(runDir, { recursive: true });
@@ -81,6 +99,7 @@ function createRunDir(fixture, { variant, rulesRef, excludeRules = [], skills })
       fs.readdirSync(skillsDir).filter((name) => !skills.includes(name))
         .forEach((name) => fs.rmSync(path.join(skillsDir, name), { recursive: true }));
     }
+    placeRules(runDir);
   }
   // Rules are committed with the fixture so the diff only shows the agent's work.
   git(runDir, 'init', '-q');
@@ -103,7 +122,7 @@ function copyRules(rulesRef, runDir) {
   execFileSync('tar', ['-x', '-C', runDir], { input: archive });
 }
 
-function runAgent(prompt, runDir, { variant, model, effort, env: extraEnv }) {
+function runClaude(prompt, runDir, { variant, model, effort, env: extraEnv }) {
   const args = ['-p', prompt, '--model', model, '--effort', effort, '--permission-mode', 'auto',
     '--output-format', 'stream-json', '--verbose'];
   // EVAL_KEEP_SESSIONS=1 keeps each session, so `npm run eval-session` can resume it and ask the agent about its choices.
@@ -116,11 +135,15 @@ function runAgent(prompt, runDir, { variant, model, effort, env: extraEnv }) {
     env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = '1';
     env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1';
   }
+  return spawnAgent('claude', args, runDir, env, 'result');
+}
 
+// Runs an agent CLI that prints JSON lines, and resolves with its events once it prints one of type `lastEvent`.
+function spawnAgent(command, args, runDir, env, lastEvent) {
   const transcriptPath = path.join(runDir, '..', 'transcript.jsonl');
   return new Promise((resolve, reject) => {
     // Own process group, so a timeout also kills what the agent started (dotnet build servers, test hosts).
-    const child = spawn('claude', args, { cwd: runDir, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    const child = spawn(command, args, { cwd: runDir, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     const transcript = fs.createWriteStream(transcriptPath);
     let stdout = '';
     let stderr = '';
@@ -138,8 +161,8 @@ function runAgent(prompt, runDir, { variant, model, effort, env: extraEnv }) {
       clearTimeout(timer);
       transcript.end();
       const events = stdout.split('\n').filter(Boolean).flatMap(parseJsonLine);
-      if (!events.some((e) => e.type === 'result')) {
-        reject(new Error(`claude exited ${code} without a result: ${stderr.slice(-2000)}`));
+      if (!events.some((e) => e.type === lastEvent)) {
+        reject(new Error(`${command} exited ${code} without a ${lastEvent} event: ${stderr.slice(-2000)}`));
         return;
       }
       resolve(events);
@@ -321,3 +344,4 @@ function sha(data) {
 }
 
 module.exports = ClaudeCodeProvider;
+Object.assign(module.exports, { spawnAgent, commandVersion, sha });
