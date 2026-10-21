@@ -5,7 +5,9 @@ alwaysApply: true
 # C# / .NET conventions
 
 ## Styles
-- **NET-001** MUST apply Microsoft's C# coding conventions and the .NET Runtime coding style.
+- **NET-001** MUST apply the .NET Runtime coding style (`docs/coding-guidelines/coding-style.md` in dotnet/runtime).
+  MUST NOT apply Microsoft's C# coding conventions, or the Runtime style's rule that the existing style of a file wins
+  (DESIGN-007).
 
 ## Rules
 - **NET-002** MUST NOT change the analyzer or build settings in `.editorconfig`, `Directory.Build.props`,
@@ -17,11 +19,16 @@ alwaysApply: true
 - **NET-004** MUST use central package management: versions only in `Directory.Packages.props`, `PackageReference`
   without `Version` in projects, added with `dotnet add package` — one place holds all versions.
 - **NET-005** MUST use file-scoped namespaces.
-- **NET-006** MUST use braces on each control-flow block.
-- **NET-007** MUST use `var` when the type is apparent, and language keywords (`string`, `int`) instead of framework
-  type names.
+- **NET-006** MUST use braces on each control-flow block, instead of the Runtime style's braceless single-line blocks.
+- **NET-007** MUST use `var` for each local whose type the compiler can infer from its initializer, instead of the
+  Runtime style's limit on `var` — the type then shows only where the compiler cannot infer it. Declare the type of a
+  local that a collection expression (CS14-004) initializes, as that expression has no type of its own. Outside a `var`
+  local, SHOULD use target-typed `new()` where a field, property, return type or parameter already names the type
+  (`=> new(ErrorKind.Validation, [message])`), instead of the Runtime style's limit to declarations, unless e.g.
+  overloads make the type unclear — the type is then written once. MUST use language keywords (`string`, `int`)
+  instead of framework type names.
 - **NET-008** MUST name private fields `_camelCase`; constants and static readonly fields `PascalCase`; interfaces
-  `IPascalCase`; locals and parameters `camelCase`.
+  `IPascalCase`; locals and parameters `camelCase` — instead of the Runtime style's `s_` and `t_` prefixes.
 - **NET-009** MUST end the name of an async method with `Async`, except a test method.
 - **NET-010** MUST order members: constants and static readonly fields, instance fields, constructors, properties,
   public methods, internal and protected methods, private methods.
