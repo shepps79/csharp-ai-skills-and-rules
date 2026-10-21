@@ -82,8 +82,8 @@ your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); th
 rules only from `.omp/rules`, so the provider moves them there; pi reads no rules, so the provider appends each
 always-apply rule to its system prompt, as pi-rules does. Their first request is smaller than Claude Code's
 (system prompt, tools and injected context, with the same rules and `AGENTS.md`, measured 2026-10-21):
-Claude Code ≈ 110k characters, omp ≈ 63k, pi ≈ 42k, of which the rules are ≈ 31k. `eval-session` and the
-transcripts page read only Claude Code sessions.
+Claude Code ≈ 110k characters, omp ≈ 63k, pi ≈ 42k, of which the rules are ≈ 31k. `eval-session` resumes only
+Claude Code sessions.
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`, both at `medium` effort; override per provider with `config.model` and `config.effort`.
 

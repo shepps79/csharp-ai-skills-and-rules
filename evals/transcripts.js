@@ -30,10 +30,11 @@ function loadRuns() {
       const dir = path.join(RUNS_ROOT, name);
       const meta = fs.existsSync(path.join(dir, 'run.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'run.json'), 'utf8')) : {};
       const events = fs.readFileSync(path.join(dir, 'transcript.jsonl'), 'utf8').split('\n').filter(Boolean)
-        .flatMap(parseJsonLine)
+        .flatMap(parseJsonLine);
+      const claudeEvents = (events[0]?.type === 'session' ? fromPiEvents(events) : events)
         .filter((e) => !NOISE.has(e.type) && !NOISE.has(e.subtype));
       // Run dirs are named `<Date.now()>-<random>` by the provider.
-      return { name, dir, startedAt: Number(name.split('-')[0]), ...meta, events,
+      return { name, dir, startedAt: Number(name.split('-')[0]), ...meta, events: claudeEvents,
         diff: stagedDiff(path.join(dir, 'repo')), hasCode: fs.existsSync(path.join(dir, 'repo', '.git')) };
     })
     .sort((a, b) => b.startedAt - a.startedAt);
@@ -98,6 +99,38 @@ function sourceFiles(repo) {
       const content = fs.readFileSync(path.join(repo, file));
       return { path: file, mark: acceptance.has(file) ? 'acceptance' : changed.get(file), text: content.includes(0) ? null : content.toString('utf8') };
     });
+}
+
+// omp and pi (providers/pi.js) print another event stream; the page reads Claude Code's, so convert theirs to it.
+function fromPiEvents(events) {
+  const messages = events.filter((e) => e.type === 'message_end').map((e) => e.message);
+  const replies = messages.filter((m) => m.role === 'assistant');
+  const last = replies.at(-1);
+  const startedAt = Date.parse(events[0].timestamp);
+  return [
+    { type: 'system', subtype: 'init', model: replies[0]?.model, cwd: events[0].cwd },
+    ...messages.flatMap((m) => {
+      if (m.role === 'user') {
+        return [{ type: 'user', message: { content: m.content } }];
+      }
+      if (m.role === 'toolResult') {
+        return [{ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: m.toolCallId, content: m.content, is_error: m.isError }] } }];
+      }
+      if (m.role === 'assistant') {
+        return [{ type: 'assistant', message: { content: m.content.map((block) => (block.type === 'toolCall'
+          ? { type: 'tool_use', id: block.id, name: block.name, input: block.arguments } : block)) } }];
+      }
+      return [];
+    }),
+    ...(events.some((e) => e.type === 'agent_end') ? [{
+      type: 'result',
+      is_error: ['error', 'aborted'].includes(last?.stopReason),
+      result: last?.errorMessage ?? (last?.content ?? []).filter((b) => b.type === 'text').map((b) => b.text).join('\n'),
+      num_turns: replies.length,
+      duration_ms: (messages.at(-1)?.timestamp ?? startedAt) - startedAt,
+      total_cost_usd: replies.reduce((sum, m) => sum + (m.usage?.cost?.total ?? 0), 0),
+    }] : []),
+  ];
 }
 
 function parseJsonLine(line) {
@@ -310,7 +343,7 @@ function changes(run) {
 function toolCall(block, events, results) {
   const result = results.get(block.id);
   const input = block.input ?? {};
-  const hint = input.description ?? input.command ?? input.file_path ?? input.skill ?? input.pattern ?? input.prompt ?? '';
+  const hint = input.description ?? input.command ?? input.file_path ?? input.path ?? input.skill ?? input.pattern ?? input.prompt ?? '';
   const children = steps(events, block.id, results);
   return el('details', { class: 'step' + (result?.is_error ? ' tool-error' : '') },
     el('summary', {}, el('strong', {}, block.name), ' ', el('span', { class: 'muted' }, String(hint).split('\\n')[0].slice(0, 140))),
@@ -453,4 +486,4 @@ show();
 `;
 }
 
-module.exports = { grade, gradeKey };
+module.exports = { grade, gradeKey, fromPiEvents };
