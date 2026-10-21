@@ -12,8 +12,8 @@ alwaysApply: true
 - **HEX-002** MUST point project references only in these directions: Api → Application, Api → Infrastructure (only
   for the composition root, HEX-015), Infrastructure → Application, Application → Domain, Domain → nothing. MUST NOT
   add a reference against them — a reference that goes back means the design is wrong.
-- **HEX-003** MUST put each outbound port, repositories included, in Application, with the name of the capability
-  (`IOrderRepository`, not `IEfOrderRepository`) — ports then have one home.
+- **HEX-003** MUST put each outbound port, repositories included, in Application instead of Evans' domain layer, with
+  the name of the capability (`IOrderRepository`, not `IEfOrderRepository`) — ports then have one home.
 - **HEX-004** MUST write inbound ports as the public methods of a sealed `<Aggregate>Service` class in Application.
   MUST NOT add an `I...UseCase` interface — it has one implementation, and tests use the real service.
 - **HEX-005** MUST return Application DTOs from use cases, never a domain type or a row type — domain internals then

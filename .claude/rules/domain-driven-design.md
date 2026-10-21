@@ -5,9 +5,10 @@ alwaysApply: true
 # Domain-driven design
 
 ## Styles
-- **DDD-001** MUST apply Eric Evans' ubiquitous language, one bounded context per service, aggregates, entities, value
-  objects and domain services. Do not apply context mapping, specifications, domain events, core-domain triage or
-  Evans' place for repository interfaces (see HEX-003).
+- **DDD-001** MUST apply only these parts of Eric Evans' *Domain-Driven Design* (2003): ubiquitous language, bounded
+  context, entities, value objects, domain services, aggregates and repositories. MUST NOT apply its other parts —
+  layered architecture (HEX-002), factories (DDD-004) and the place of repositories (HEX-003) included — or DDD from
+  later sources, such as domain events.
 - **DDD-002** MUST apply the type-driven design of Scott Wlaschin's *Domain Modeling Made Functional*: make illegal
   states unrepresentable, parse instead of validate, constrained simple types, one type for each lifecycle state.
   MUST NOT apply its F# workflow structure (HEX-001 and HEX-002 give the structure).
@@ -34,8 +35,8 @@ alwaysApply: true
   parameter, and the build then shows each caller.
 - **DDD-011** MUST give each state type a public static `Create` that checks the invariants of that state, not the
   transition rules — adapters use it to rebuild the state from storage; only transitions move between states.
-- **DDD-012** MUST change an entity only through its own methods, which use `with` and return a new instance — the
-  type must protect its invariants.
+- **DDD-012** MUST change an entity only through its own methods, which use `with` and return a new instance, instead
+  of Evans' mutable entities — the type then protects its invariants.
 - **DDD-013** MUST compare entities by `Id`, never with `==` or `Equals` — record equality compares all fields and
   compares collections by reference.
 - **DDD-014** MUST write a domain service only for logic that spans aggregates. It is pure and stateless, uses no
@@ -45,6 +46,8 @@ alwaysApply: true
   the aggregate (when it was placed) on the aggregate. Application only parses, calls ports and the domain, and maps; a
   DTO's `From` copies values and decides nothing — a rule in Application has no domain tests, and the next use case
   copies it.
+- **DDD-016** MUST keep each service to one bounded context — each term of the ubiquitous language then has one
+  meaning in the code of a service.
 
 ## Examples
 A constrained type, and a lifecycle with two states:
