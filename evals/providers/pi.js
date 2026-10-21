@@ -20,8 +20,8 @@ class PiProvider extends ClaudeCodeProvider {
   }
 
   async runAgent(prompt, runDir) {
-    const { model, effort, env } = this.config;
-    const args = ['-p', '--mode', 'json', '--model', model, '--thinking', effort];
+    const { model, effort, env, extensions = [] } = this.config;
+    const args = ['-p', '--mode', 'json', '--model', model, '--thinking', effort, ...extensions.flatMap((file) => ['-e', file])];
     if (this.harness === 'omp') {
       args.push('--auto-approve', '--no-title');
     }
