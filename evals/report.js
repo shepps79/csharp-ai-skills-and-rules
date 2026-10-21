@@ -1,8 +1,9 @@
-// Quality % and cost per variant and task for one or more evals (default: latest).
+// Quality % and cost per variant and task for one or more evals (default: latest; `--last <n>` for the newest n), in
+// one table. A variant that shows in more than one eval gets one row per eval.
 // Quality is promptfoo's weighted score (build, tests, acceptance and judge weigh 3, each rule check 1),
 // forced to 0 when the build fails: code that doesn't compile has no quality.
 // Runs that errored (agent never ran, not logged in, timeout) say nothing about quality, so they're left out.
-// Exits 1 when the evals' environment fingerprints differ, because their results can't be compared.
+// Exits 1 when one variant has more than one environment fingerprint, because its results can't be compared.
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -11,15 +12,32 @@ const path = require('node:path');
 // promptfoo also puts failed-assertion reasons in `error`; only failureReason 2 means the run itself errored.
 const ERRORED = 2;
 
-const evalIds = process.argv.length > 2 ? process.argv.slice(2) : ['latest'];
-const fingerprints = new Set(evalIds.flatMap((evalId) => report(exportEval(evalId))));
+const args = process.argv.slice(2);
+const evalIds = args[0] === '--last' ? latestEvalIds(Number(args[1])) : args.length ? args : ['latest'];
+const rows = evalIds.map(exportEval).flatMap(evalRows);
+console.table(table(rows));
 
-// Printed so results from separate evals (baseline vs today) can be checked as comparable.
-console.log(`fingerprint: ${[...fingerprints].join(', ') || 'none recorded'}`);
-if (fingerprints.size > 1) {
-  console.error(`${fingerprints.size} environment fingerprints: the global setup changed, so these results aren't comparable. ` +
-    'Re-run the baseline.');
-  process.exitCode = 1;
+// Printed so results from separate evals (baseline vs today) can be checked as comparable. Fingerprints differ
+// between harnesses and models by design, so only one variant's runs are compared.
+const variants = [...new Set(rows.map((r) => r.variant))];
+for (const variant of variants.filter((v) => v !== 'none')) {
+  const fingerprints = new Set(rows.filter((r) => r.variant === variant && r.fingerprint).map((r) => r.fingerprint));
+  console.log(`${variant} fingerprint: ${[...fingerprints].join(', ') || 'none recorded'}`);
+  if (fingerprints.size > 1) {
+    console.error(`${variant} has ${fingerprints.size} environment fingerprints: the global setup changed, so its results ` +
+      "aren't comparable. Re-run the baseline.");
+    process.exitCode = 1;
+  }
+}
+
+function latestEvalIds(count) {
+  if (!(count > 0)) {
+    console.error('Usage: npm run report -- --last <number of evals>');
+    process.exit(1);
+  }
+  const output = execFileSync('npm', ['run', '--silent', 'promptfoo', '--', 'list', 'evals', '--ids-only', '-n', String(count)],
+    { cwd: __dirname, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  return output.split('\n').filter((line) => line.startsWith('eval-'));
 }
 
 function exportEval(evalId) {
@@ -37,9 +55,11 @@ function exportEval(evalId) {
   return exported;
 }
 
-// Prints the eval's table and returns its fingerprint hashes (the bare-model "none" variant has no global setup).
-function report(exported) {
-  const rows = exported.results.results.map((r) => ({
+function evalRows(exported) {
+  const empty = exported.results.results.length ? '' : ' (no results, so no row)';
+  console.log(`${exported.evalId} — ${exported.config?.description ?? ''}${empty}`);
+  return exported.results.results.map((r) => ({
+    evalId: exported.evalId,
     variant: r.provider.label ?? r.provider.id,
     task: r.testCase.description.split(' ')[0],
     quality: r.failureReason === ERRORED || !r.response?.metadata?.dotnet?.buildOk ? 0 : r.score,
@@ -52,14 +72,19 @@ function report(exported) {
     pairwise: r.namedScores?.pairwise,
     fingerprint: r.response?.metadata?.fingerprint?.hash,
   }));
+}
 
+// One row per variant, or per variant and eval when the variant shows in more than one eval.
+function table(rows) {
+  const evalsOf = (variant) => new Set(rows.filter((r) => r.variant === variant).map((r) => r.evalId));
+  const rowName = (r) => (evalsOf(r.variant).size > 1 ? `${r.variant} (${r.evalId})` : r.variant);
   const tasks = [...new Set(rows.map((r) => r.task))];
-  const table = Object.fromEntries([...new Set(rows.map((r) => r.variant))].map((variant) => {
-    const all = rows.filter((r) => r.variant === variant);
+  return Object.fromEntries([...new Set(rows.map(rowName))].map((name) => {
+    const all = rows.filter((r) => rowName(r) === name);
     const valid = all.filter((r) => !r.errored);
     const average = (field) => valid.reduce((total, r) => total + r[field], 0) / (valid.length || 1);
     const byTask = tasks.map((task) => [task, percent(valid.filter((r) => r.task === task).map((r) => r.quality))]);
-    return [variant, {
+    return [name, {
       quality: percent(valid.map((r) => r.quality)),
       ...Object.fromEntries(byTask),
       'all checks pass': percent(valid.map((r) => Number(r.passed))),
@@ -74,10 +99,6 @@ function report(exported) {
       minutes: Number(average('minutes').toFixed(1)),
     }];
   }));
-
-  console.log(`${exported.evalId} — ${exported.config?.description ?? ''}`);
-  console.table(table);
-  return rows.filter((r) => r.variant !== 'none' && r.fingerprint).map((r) => r.fingerprint);
 }
 
 function percent(values) {

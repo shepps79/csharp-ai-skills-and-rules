@@ -137,7 +137,8 @@ npm run report -- <eval-id>     # a specific one
 ```
 
 ```bash
-npm run report -- <baseline-id> <eval-id>   # several evals; exits 1 if their fingerprints differ
+npm run report -- <baseline-id> <eval-id>   # several evals in one table
+npm run report -- --last 3                  # the newest 3 evals, e.g. after eval-omp, eval-pi and eval-lmstudio
 ```
 
 Prints a quality % per variant, overall and per task, and the mean turns, tokens, cost and minutes per run: the same
@@ -145,8 +146,9 @@ quality at lower cost is a win too. Each run's quality is the weighted mean of i
 and judge weigh 3; each rule check 1; the judge's and coverage's scores are fractional), and is
 0 when the build fails.
 "all checks pass" is the stricter share of runs where nothing failed. Runs that errored (agent never ran, timed out)
-are counted under "run errors" and left out of both percentages. The `fingerprint` line lists the environment hashes;
-the report exits 1 when the evals it prints have more than one.
+are counted under "run errors" and left out of both percentages. A variant that shows in more than one eval gets one
+row per eval. The `fingerprint` lines list each variant's environment hashes; the report exits 1 when one variant has
+more than one, since harnesses and models differ by design.
 
 ## Grading
 
