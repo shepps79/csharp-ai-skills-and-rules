@@ -20,6 +20,7 @@ npm run eval -- --filter-pattern cancel-order                # one task
 npm run eval-baseline -- --repeat 5                          # every variant, incl. none
 npm run eval-pairwise                                        # judge picks rules@HEAD or rules@WORKTREE per task
 PAIRWISE_SWAP=1 npm run eval-pairwise                        # the same with the order swapped
+LMSTUDIO_MODEL=qwen/qwen3-coder-30b npm run eval-lmstudio    # working-tree rules on a local LM Studio model
 npm run view                                                 # local results UI
 npm run clean                                                # delete ALL results and run dirs and kept sessions, baseline included
 EVAL_KEEP_SESSIONS=1 npm run eval -- --filter-pattern cancel-order   # keep the agent sessions to resume
@@ -65,6 +66,11 @@ skill). Leave it out to ship every skill.
 for a `select-best` over the same rubric, so the judge picks the better diff per task (metric `pairwise`). Judges
 favour a position, so run it in both orders and count a version as better only when it wins in both:
 `npm run report -- <first-id> <swapped-id>`.
+
+**LM Studio.** `lmstudio.js` runs `rules@WORKTREE` with Claude Code on a local model, through LM Studio's
+Anthropic-compatible API; the judge stays on Claude. Start the server and load a model with a large context window
+first, then `LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` defaults to `http://localhost:1234`). It
+runs one task at a time.
 
 The agent runs on `claude-sonnet-5-5` and the judge on `claude-opus-5-5`, both at `medium` effort; override per provider with `config.model` and `config.effort`.
 

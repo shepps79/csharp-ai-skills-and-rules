@@ -6,6 +6,7 @@
     "eval": "npm run promptfoo -- eval --no-cache --no-share --filter-providers rules@",
     "eval-baseline": "npm run promptfoo -- eval --no-cache --no-share --description baseline",
     "eval-pairwise": "npm run promptfoo -- eval --no-cache --no-share -c pairwise.js",
+    "eval-lmstudio": "npm run promptfoo -- eval --no-cache --no-share -c lmstudio.js",
     "view": "npm run promptfoo -- view --yes",
     "eval-session": "node session.js",
     "report": "node report.js",
