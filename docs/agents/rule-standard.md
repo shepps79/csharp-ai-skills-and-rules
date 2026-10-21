@@ -38,7 +38,7 @@ alwaysApply: true
 ```
 
 - Frontmatter: `alwaysApply: true`, or `paths:` when the topic's scope is agreed. Never both, never `globs:` (see
-  `AGENTS.md`: Claude Code reads only `paths`, pi-rules and codex-rules load nothing without one of the two).
+  `AGENTS.md`: Claude Code reads only `paths`, codex-rules loads nothing without one of the two).
 - `paths:` loads a rule only once the agent touches a matching file, so it never loads on greenfield work. Topics
   that shape a design before any file exists (`DESIGN`, `DDD`, `HEX`) stay on `alwaysApply: true`; `paths:` is only
   for topics that matter solely while editing matching files.
@@ -80,7 +80,7 @@ alwaysApply: true
 11. **No stack choices.** Frameworks, libraries, versions and tool commands belong in the project's `AGENTS.md`
     (`templates/dotnet/AGENTS.md` for the eval fixtures). A rule may use the API of a chosen library.
 12. **No human scaffolding.** No context, audience, principles, references, TL;DR, waiver process or quality gates.
-13. **Size.** Each body under 12,000 characters (the pi-rules and codex-rules per-rule cap); all bodies together under
+13. **Size.** Each body under 12,000 characters (the codex-rules per-rule cap); all bodies together under
     40,000 characters, since every session loads them all.
 14. **Language.** Write rule text in ASD-STE100 Simplified Technical English: short sentences, active voice, one
     meaning per word, the imperative for instructions. Code identifiers and named styles keep their own names.
