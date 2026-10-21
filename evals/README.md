@@ -72,10 +72,12 @@ for a `select-best` over the same rubric, so the judge picks the better diff per
 favour a position, so run it in both orders and count a version as better only when it wins in both:
 `npm run report -- <first-id> <swapped-id>`.
 
-**LM Studio.** `lmstudio.js` runs `rules@WORKTREE` with Claude Code on a local model, through LM Studio's
-Anthropic-compatible API; the judge stays on Claude. Start the server and load a model with a large context window
-first, then `LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` defaults to `http://localhost:1234`). It
-runs one task at a time.
+**LM Studio.** `lmstudio.js` runs `rules@WORKTREE` with pi on a local model, through LM Studio's OpenAI-compatible
+API: `providers/lmstudio-pi.js` registers the model in pi, so your pi profile needs no `models.json`. The rules load
+through your pi profile as for `eval-pi`, so set `PI_CODING_AGENT_DIR`; the judge runs through pi on the same Claude
+judge model. Start the server and load a model with a large context window first, then
+`LMSTUDIO_MODEL=<model id> npm run eval-lmstudio` (`LMSTUDIO_URL` defaults to `http://localhost:1234`). It runs one
+task at a time.
 
 **omp and pi.** `harness.js` runs `rules@WORKTREE` with omp or pi (`providers/pi.js`) on the same model, through
 your login in that CLI (`omp login`, `/login` in pi, or `ANTHROPIC_API_KEY`); the judge runs through the same CLI
