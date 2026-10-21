@@ -6,11 +6,14 @@ remote generation are switched off in `package.json`, and results stay in `evals
 
 ## Run
 
-Runs use whichever Claude Code config the shell points at. If you log in through a non-default config dir, export it
-first, or every run errors with "Not logged in":
+Each run uses the config that the shell names, and the provider throws when it is not set: `CLAUDE_CONFIG_DIR` for
+Claude Code, `OMP_PROFILE` for omp and `PI_CODING_AGENT_DIR` for pi. Name the one you are logged in through, or
+every run errors with "Not logged in":
 
 ```bash
 export CLAUDE_CONFIG_DIR=~/.claude-<profile>
+export OMP_PROFILE=<profile>             # for eval-omp
+export PI_CODING_AGENT_DIR=~/.pi/agent   # for eval-pi
 ```
 
 ```bash

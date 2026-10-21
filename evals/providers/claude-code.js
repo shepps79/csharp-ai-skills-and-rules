@@ -18,11 +18,17 @@ const DEFAULT_EFFORT = 'medium';
 const AGENT_TIMEOUT_MS = 30 * 60 * 1000;
 // A deadlocked test (e.g. a stray .Result) must fail the run, not hang the whole eval.
 const DOTNET_TIMEOUT_MS = 10 * 60 * 1000;
+// Each harness must run against an explicit config dir or profile, so a run never uses your everyday setup by accident.
+const CONFIG_ENV = { 'claude-code': 'CLAUDE_CONFIG_DIR', omp: 'OMP_PROFILE', pi: 'PI_CODING_AGENT_DIR' };
 
 class ClaudeCodeProvider {
   constructor(options) {
     this.config = { model: DEFAULT_MODEL, effort: DEFAULT_EFFORT, ...options.config };
     this.label = options.label;
+    const name = CONFIG_ENV[this.harness];
+    if (name && !{ ...process.env, ...this.config.env }[name]) {
+      throw new Error(`Set ${name} before running the ${this.harness} provider`);
+    }
   }
 
   id() {
